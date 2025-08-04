@@ -63,8 +63,8 @@ Follow these instructions to get the ALT-AI-MATE platform running on your local 
 
 ### Prerequisites
 
--   [Node.js](https://nodejs.org/) (v18.x or later recommended)
--   [npm](https://www.npmjs.com/) (v9.x or later)
+-   **Node.js v20.x** is required. We recommend using a version manager like [nvm](https://github.com/nvm-sh/nvm) to manage your Node.js versions. The project includes a `.nvmrc` file, so you can simply run `nvm use` in the root directory to switch to the correct version.
+-   npm (v10.x or later, comes with Node.js v20)
 -   [PostgreSQL](https://www.postgresql.org/download/) installed and running.
 
 ### Installation

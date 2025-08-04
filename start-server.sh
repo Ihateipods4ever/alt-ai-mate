@@ -1,43 +1,99 @@
 #!/bin/bash
 
+# --- Node.js Version Check ---
+# A more robust check to find and use nvm if it exists.
+NVM_SH_PATH=""
+if [ -s "$HOME/.nvm/nvm.sh" ]; then # Standard nvm install path
+    NVM_SH_PATH="$HOME/.nvm/nvm.sh"
+elif [ -s "/usr/local/opt/nvm/nvm.sh" ]; then # Homebrew nvm install path
+    export NVM_DIR="$HOME/.nvm" # nvm.sh needs NVM_DIR to be set
+    [ ! -d "$NVM_DIR" ] && mkdir -p "$NVM_DIR" # Create .nvm directory if it doesn't exist
+    NVM_SH_PATH="/usr/local/opt/nvm/nvm.sh"
+fi
+
+if [ -n "$NVM_SH_PATH" ]; then
+    echo "✅ Found nvm, attempting to set Node.js version from .nvmrc..."
+    . "$NVM_SH_PATH" # Source nvm
+    nvm use # Use the version specified in .nvmrc
+    if [ $? -ne 0 ]; then # Check if nvm use failed
+      echo "❌ 'nvm use' failed. The required Node.js version (from .nvmrc) might not be installed."
+      read -p "➡️ Would you like to run 'nvm install' to install it now? (y/n) " -n 1 -r
+      echo # Move to a new line
+      if [[ $REPLY =~ ^[Yy]$ ]]; then
+        nvm install # This will install the version from .nvmrc
+        nvm use # Try to use it again after installation, in case the first one failed
+      else
+        echo "Aborting. Please install Node.js v20 manually and try again."
+        exit 1
+      fi
+    fi
+    echo "✅ Successfully set Node version to: $(node -v)"
+else
+    echo "⚠️ nvm not found. Proceeding with system's default Node.js."
+    echo "If you encounter errors, please install nvm or ensure Node.js v20 is your default."
+fi
+# --- End Node.js Version Check ---
+
 echo "🚀 Starting ALT-AI-MATE Development Platform..."
 
-# Kill any existing server processes
-echo "Stopping any existing servers..."
-pkill -f "python3 src/server.py" 2>/dev/null || true
-pkill -f "node src/" 2>/dev/null || true
+# Kill any existing server and client processes
+echo "Stopping any processes on ports 3001 (backend) and 5173 (frontend)..."
+BACKEND_PIDS=$(lsof -t -i:3001)
+FRONTEND_PIDS=$(lsof -t -i:5173)
+
+[ ! -z "$BACKEND_PIDS" ] && echo "Killing backend process(es) on port 3001: $BACKEND_PIDS" && kill -9 $BACKEND_PIDS 2>/dev/null
+[ ! -z "$FRONTEND_PIDS" ] && echo "Killing frontend process(es) on port 5173: $FRONTEND_PIDS" && kill -9 $FRONTEND_PIDS 2>/dev/null
 
 # Wait a moment for processes to stop
 sleep 2
 
 # Start the Python backend server
 echo "Starting backend server..."
-cd packages/server
-python3 src/server.py &
-SERVER_PID=$!
+(python3 packages/server/src/server.py &)
+BACKEND_PID=$!
 
-# Wait for server to start
-sleep 3
+# Start the Vite development server for the frontend
+echo "Starting frontend development server..."
+CLIENT_DIR="packages/client"
+if [ ! -d "$CLIENT_DIR/node_modules" ]; then
+    echo "Frontend dependencies not found. Running npm install in $CLIENT_DIR..."
+    (cd "$CLIENT_DIR" && npm install)
+fi
+(cd "$CLIENT_DIR" && npm run dev &)
+VITE_PID=$!
 
-# Test server health
-echo "Testing server health..."
+# Wait for servers to start
+sleep 5
+
+# Test backend server health
+echo "Testing backend server health..."
 if curl -s http://localhost:3001/api/health > /dev/null; then
     echo "✅ Backend server is running successfully on http://localhost:3001"
 else
     echo "❌ Backend server failed to start"
-    kill $SERVER_PID 2>/dev/null || true
+    kill $BACKEND_PID $VITE_PID 2>/dev/null || true
     exit 1
 fi
 
-# Open the frontend
-echo "Opening frontend application..."
-open ../client/src/index.html
+# Test frontend server health
+echo "Testing frontend server health..."
+if curl -s http://localhost:5173 > /dev/null; then
+    echo "✅ Frontend server is running successfully on http://localhost:5173"
+else
+    echo "❌ Frontend server failed to start"
+    kill $BACKEND_PID $VITE_PID 2>/dev/null || true
+    exit 1
+fi
+
+# Open the frontend in the browser
+echo "Opening frontend application in browser..."
+open http://localhost:5173
 
 echo ""
 echo "🎉 ALT-AI-MATE is now running!"
 echo ""
 echo "Backend API: http://localhost:3001"
-echo "Frontend: Opening in your default browser"
+echo "Frontend App: http://localhost:5173"
 echo ""
 echo "Available API endpoints:"
 echo "  GET  /api/health - Health check"
@@ -48,7 +104,7 @@ echo ""
 echo "Press Ctrl+C to stop the server"
 
 # Keep the script running and handle Ctrl+C
-trap 'echo ""; echo "Shutting down..."; kill $SERVER_PID 2>/dev/null || true; exit 0' INT
+trap 'echo ""; echo "Shutting down..."; kill $BACKEND_PID $VITE_PID 2>/dev/null || true; exit 0' INT
 
 # Wait for the server process
-wait $SERVER_PID
+wait $BACKEND_PID $VITE_PID

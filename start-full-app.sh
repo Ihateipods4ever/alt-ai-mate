@@ -1,9 +1,37 @@
 #!/bin/bash
 
 echo "🚀 Starting ALT-AI-MATE Full React TypeScript Application..."
+ 
+# --- Node.js Version Check ---
+# A more robust check to find and use nvm if it exists.
+NVM_SH_PATH=""
+if [ -s "$HOME/.nvm/nvm.sh" ]; then # Standard nvm install path
+    NVM_SH_PATH="$HOME/.nvm/nvm.sh"
+elif [ -s "/usr/local/opt/nvm/nvm.sh" ]; then # Homebrew nvm install path
+    export NVM_DIR="$HOME/.nvm" # nvm.sh needs NVM_DIR to be set
+    [ ! -d "$NVM_DIR" ] && mkdir -p "$NVM_DIR" # Create .nvm directory if it doesn't exist
+    NVM_SH_PATH="/usr/local/opt/nvm/nvm.sh"
+fi
 
-# Set Node.js path
-export PATH="/usr/local/Cellar/node@20/20.19.4/bin:$PATH"
+if [ -n "$NVM_SH_PATH" ]; then
+    echo "✅ Found nvm, attempting to set Node.js version from .nvmrc..."
+    . "$NVM_SH_PATH" # Source nvm
+    nvm use # Use the version specified in .nvmrc
+    if [ $? -ne 0 ]; then # Check if nvm use failed
+      echo "❌ 'nvm use' failed. The required Node.js version (from .nvmrc) might not be installed."
+      read -p "➡️ Would you like to run 'nvm install' to install it now? (y/n) " -n 1 -r
+      echo # Move to a new line
+      if [[ $REPLY =~ ^[Yy]$ ]]; then
+        nvm install # This will install the version from .nvmrc
+        nvm use # Try to use it again after installation, in case the first one failed
+      else
+        echo "Aborting. Please install Node.js v20 manually and try again."
+        exit 1
+      fi
+    fi
+    echo "✅ Successfully set Node version to: $(node -v)"
+fi
+# --- End Node.js Version Check ---
 
 # Kill any existing server processes
 echo "Stopping any existing servers..."

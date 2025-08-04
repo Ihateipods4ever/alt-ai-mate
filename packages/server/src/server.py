@@ -144,6 +144,8 @@ class ALTAIMateHandler(http.server.BaseHTTPRequestHandler):
 if __name__ == "__main__":
     PORT = 3001
     
+    # Allow reusing addresses to prevent "Address already in use" errors
+    socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("", PORT), ALTAIMateHandler) as httpd:
         print(f"🚀 ALT-AI-MATE backend server is listening at http://localhost:{PORT}")
         print("Available endpoints:")
