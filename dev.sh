@@ -47,9 +47,9 @@ FRONTEND_PIDS=$(lsof -t -i:5173)
 # Wait a moment for processes to stop
 sleep 2
 
-# Start the Python backend server
+# Start the Node.js backend server
 echo "Starting backend server..."
-(python3 packages/server/src/server.py &)
+(cd packages/server && npm run dev &)
 BACKEND_PID=$!
 
 # Start the Vite development server for the frontend
@@ -62,27 +62,28 @@ fi
 (cd "$CLIENT_DIR" && npm run dev &)
 VITE_PID=$!
 
-# Wait for servers to start
-sleep 5
+# A more robust function to wait for a server to be available
+wait_for_server() {
+  local url=$1
+  local service_name=$2
+  echo "Waiting for $service_name to be available at $url..."
+  for i in {1..20}; do # Try for 20 seconds
+    if curl -s --head --fail "$url" > /dev/null; then
+      echo "✅ $service_name is running successfully on $url"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "❌ $service_name failed to start in time."
+  return 1
+}
 
-# Test backend server health
-echo "Testing backend server health..."
-if curl -s http://localhost:3001/api/health > /dev/null; then
-    echo "✅ Backend server is running successfully on http://localhost:3001"
-else
-    echo "❌ Backend server failed to start"
-    kill $BACKEND_PID $VITE_PID 2>/dev/null || true
-    exit 1
+# Wait for and test both servers
+if ! wait_for_server http://localhost:3001/api/health "Backend"; then
+    kill $BACKEND_PID $VITE_PID 2>/dev/null || true; exit 1;
 fi
-
-# Test frontend server health
-echo "Testing frontend server health..."
-if curl -s http://localhost:5173 > /dev/null; then
-    echo "✅ Frontend server is running successfully on http://localhost:5173"
-else
-    echo "❌ Frontend server failed to start"
-    kill $BACKEND_PID $VITE_PID 2>/dev/null || true
-    exit 1
+if ! wait_for_server http://localhost:5173 "Frontend"; then
+    kill $BACKEND_PID $VITE_PID 2>/dev/null || true; exit 1;
 fi
 
 # Open the frontend in the browser
