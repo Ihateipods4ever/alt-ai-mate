@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "../theme-provider";
-import { Moon, Sun, Code, Bot } from 'lucide-react';
+import { Moon, Sun, Bot } from 'lucide-react';
 import { Link } from "react-router-dom";
 
 /**
@@ -62,8 +62,9 @@ function Header() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>Profile</DropdownMenuItem>
-            {/* The Billing page link is functional */}
-            <Link to="/billing"><DropdownMenuItem>Billing</DropdownMenuItem></Link>
+            <DropdownMenuItem asChild>
+              <Link to="/billing">Billing</Link>
+            </DropdownMenuItem>
             <DropdownMenuItem>Sign Out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
