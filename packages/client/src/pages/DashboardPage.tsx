@@ -29,6 +29,17 @@ function DashboardPage() {
     }
   };
 
+  // Maps the descriptive project type from mock data to the internal ID used by the EditorPage
+  const getTypeIdFromDisplayName = (displayName: string): string => {
+    const mapping: { [key: string]: string } = {
+      'Web App': 'web',
+      'Mobile App': 'mobile',
+      'Desktop App': 'desktop',
+      'Hardware/IoT': 'hardware',
+    };
+    return mapping[displayName] || 'web'; // Default to 'web' if not found
+  };
+
 
   return (
     <div className="space-y-6">
@@ -72,7 +83,9 @@ function DashboardPage() {
                     </span>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Link to="/editor"><Button variant="outline" size="sm">Open Editor</Button></Link>
+                    <Link to="/editor" state={{ projectType: getTypeIdFromDisplayName(project.type) }}>
+                      <Button variant="outline" size="sm">Open Editor</Button>
+                    </Link>
                   </TableCell>
                 </TableRow>
               ))}
