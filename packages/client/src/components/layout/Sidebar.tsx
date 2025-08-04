@@ -1,6 +1,5 @@
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   LayoutDashboard,
@@ -32,9 +31,9 @@ const navItems = [
  * @param {boolean} isCollapsed - Controls the collapsed state of the sidebar.
  */
 function Sidebar({ isCollapsed }: SidebarProps) {
-  // Common class names for navigation links
-  const linkClasses = `
-    flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all 
+  // Base classes for all nav links, leveraging aria-current for active state
+  const baseLinkClasses = `
+    flex items-center rounded-lg text-muted-foreground transition-all 
     hover:text-primary aria-[current=page]:bg-muted aria-[current=page]:text-primary
   `;
 
@@ -49,9 +48,7 @@ function Sidebar({ isCollapsed }: SidebarProps) {
                   <NavLink
                     to={item.to}
                     end={item.to === '/'}
-                    className={({ isActive }) =>
-                      cn(linkClasses, 'justify-center', isActive && 'bg-muted text-primary')
-                    }
+                    className={cn(baseLinkClasses, 'h-9 w-9 justify-center')}
                   >
                     <item.icon className="h-5 w-5" />
                     <span className="sr-only">{item.label}</span>
@@ -64,9 +61,7 @@ function Sidebar({ isCollapsed }: SidebarProps) {
                 key={item.to}
                 to={item.to}
                 end={item.to === '/'}
-                className={({ isActive }) =>
-                  cn(linkClasses, isActive && 'bg-muted text-primary')
-                }
+                className={cn(baseLinkClasses, 'gap-3 px-3 py-2')}
               >
                 <item.icon className="h-4 w-4" />
                 {item.label}

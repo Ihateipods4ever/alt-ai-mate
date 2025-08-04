@@ -7,8 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { FileText, Folder, HardDrive, Cpu, MemoryStick, SendHorizonal, Bot } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { FileText, Folder, HardDrive, Cpu, MemoryStick, SendHorizontal, Bot } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 /**
@@ -179,7 +179,7 @@ function EditorPage() {
             </div>
             <div className="p-2 border-t flex items-center gap-2">
                 <Input placeholder="Ask for help..." value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendMessage()}/>
-                <Button onClick={handleSendMessage}><SendHorizonal className="h-4 w-4"/></Button>
+                <Button onClick={handleSendMessage}><SendHorizontal className="h-4 w-4"/></Button>
             </div>
           </TabsContent>
         </Tabs>
