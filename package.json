@@ -13,5 +13,10 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
-  }
+  },
+  "description": "Welcome to ALT-AI-MATE, the all-in-one, AI-powered platform that enables you to generate, develop, preview, deploy, and manage software applications, hardware prototypes, and their entire digital infrastructure from a single interface.",
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }

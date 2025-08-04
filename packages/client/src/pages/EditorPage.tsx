@@ -6,7 +6,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { FileText, Folder, HardDrive, Cpu, MemoryStick, SendHorizonal, Bot } from 'lucide-react';
+import { cn } from "@/lib/utils";
 
 /**
  * Phase 3 & 7: The Integrated Editor & Hardware Prototyping page.

@@ -7,7 +7,7 @@ import DashboardPage from './pages/DashboardPage';
 import NewProjectPage from './pages/NewProjectPage';
 import EditorPage from './pages/EditorPage';
 import DeployPage from './pages/DeployPage';
-import ServersPage from './pages/ServersPage';
+import ServersPage from './pages/ServerPage';
 import IpGuardPage from './pages/IpGuardPage';
 import SettingsPage from './pages/SettingsPage';
 import BillingPage from './pages/BillingPage';

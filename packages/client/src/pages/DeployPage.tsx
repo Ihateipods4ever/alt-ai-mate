@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Rocket, Link as LinkIcon } from 'lucide-react';
+import { cn } from "@/lib/utils";
 
 // Mock data for projects
 const initialProjects = [

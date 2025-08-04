@@ -17,5 +17,9 @@
     "@types/pg": "^8.11.6",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.4.5"
-  }
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
 }
