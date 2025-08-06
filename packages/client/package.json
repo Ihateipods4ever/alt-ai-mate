@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "NODE_OPTIONS='--max-old-space-size=1024' tsc --skipLibCheck && NODE_OPTIONS='--max-old-space-size=1024' vite build --mode production",
+    "build": "NODE_OPTIONS='--max-old-space-size=768' tsc --skipLibCheck --noEmit && NODE_OPTIONS='--max-old-space-size=768' vite build --mode production",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "postinstall": "npm prune --production || true"
