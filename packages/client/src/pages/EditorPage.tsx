@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useState, useRef } from 'react';
+import { useLocation, NavLink } from 'react-router-dom';
 import Editor from "@monaco-editor/react";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,6 +14,40 @@ import { cn } from "@/lib/utils";
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 /**
+ * A recursive component to render the file explorer tree.
+ */
+const FileTreeItem = ({ item, level = 0 }: { item: any, level?: number }) => {
+  const [isOpen, setIsOpen] = useState(item.type === 'folder');
+
+  const handleToggle = () => {
+    if (item.type === 'folder') {
+      setIsOpen(!isOpen);
+    }
+    // In a real app, clicking a file would update the editor content.
+  };
+
+  return (
+    <>
+      <div
+        onClick={handleToggle}
+        style={{ paddingLeft: `${level * 1.5}rem` }}
+        className="flex items-center gap-2 cursor-pointer p-2 hover:bg-muted rounded-md text-sm"
+      >
+        {item.type === 'folder' ? (
+          <Folder className="h-4 w-4 text-primary" />
+        ) : (
+          <FileText className="h-4 w-4 text-muted-foreground" />
+        )}
+        {item.name}
+      </div>
+      {isOpen && item.children && (
+        <ul className="space-y-1">{item.children.map((child: any) => <FileTreeItem key={child.name} item={child} level={level + 1} />)}</ul>
+      )}
+    </>
+  );
+};
+
+/**
  * Phase 3 & 7: The Integrated Editor & Hardware Prototyping page.
  * The view adapts based on the project type selected in the New Project page.
  */
@@ -22,6 +56,7 @@ function EditorPage() {
   // Determine project type from navigation state, default to 'web'
   const { projectType = 'web', generatedCode } = location.state || {};
   const editorDefaultValue = generatedCode || `// Welcome to ALT-AI-MATE Editor\n// Start typing your code here.\nfunction App() {\n  return <h1>Hello, World!</h1>\n}`;
+  const [editorContent, setEditorContent] = useState(editorDefaultValue);
   
   const isHardwareProject = projectType === 'hardware';
 
@@ -96,12 +131,9 @@ function EditorPage() {
       <div className="p-4">
         <h3 className="text-lg font-semibold mb-4">File Explorer</h3>
         <ul className="space-y-1">
-          {files.map(file => (
-            <li key={file.name} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-muted rounded-md">
-                {file.type === 'folder' ? <Folder className="h-4 w-4 text-primary"/> : <FileText className="h-4 w-4 text-muted-foreground"/>}
-                {file.name}
-            </li>
-          ))}
+            {files.map(file => (
+                <FileTreeItem key={file.name} item={file} />
+            ))}
         </ul>
       </div>
     );
@@ -125,7 +157,7 @@ function EditorPage() {
             height="100%"
             defaultLanguage="typescript"
             defaultValue={editorDefaultValue}
-            theme="vs-dark"
+            onChange={(value) => setEditorContent(value || '')}
             options={{ minimap: { enabled: false } }}
         />
       )
@@ -156,6 +188,55 @@ function EditorPage() {
             </div>
         )
     }
+
+    const previewHtml = `
+      <html>
+        return (
+            <div className="p-4 h-full flex flex-col">
+                <h3 className="text-lg font-semibold mb-4">Bill of Materials (BOM)</h3>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Component</TableHead>
+                            <TableHead className="text-right">Quantity</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {bomItems.map(item => (
+                             <TableRow key={item.component}>
+                                <TableCell>{item.component}</TableCell>
+                                <TableCell className="text-right">{item.quantity}</TableCell>
+                             </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+        )
+    }
+        <head>
+          <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+          <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+          <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+          <style> body { font-family: sans-serif; margin: 0; } #root { padding: 1rem; } </style>
+        </head>
+        <body>
+          <div id="root"></div>
+          <script type="text/babel">
+            try {
+              ${editorContent}
+              const container = document.getElementById('root');
+              const root = ReactDOM.createRoot(container);
+              root.render(<App />);
+            } catch (err) {
+              const root = document.getElementById('root');
+              root.innerHTML = '<div style="color: red;"><h3>Error</h3><pre>' + err.message + '</pre></div>';
+              console.error(err);
+            }
+          </script>
+        </body>
+      </html>
+    `;
+
     return (
        <Tabs defaultValue="preview" className="h-full flex flex-col">
           <TabsList className="shrink-0">
@@ -177,7 +258,7 @@ function EditorPage() {
               </Select>
             </div>
             <div className="flex-grow p-4 bg-muted/20">
-              <iframe src="about:blank" title="Live Preview" className="w-full h-full bg-white border rounded-md shadow-inner" />
+              <iframe srcDoc={previewHtml} title="Live Preview" className="w-full h-full bg-white border rounded-md shadow-inner" sandbox="allow-scripts" />
             </div>
           </TabsContent>
           {/* AI Assistant Tab */}
