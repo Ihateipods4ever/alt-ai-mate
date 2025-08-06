@@ -1,8 +1,9 @@
 import { NavLink } from 'react-router-dom';
-import { Code, Cloud, Server, ShieldCheck, Bot } from 'lucide-react';
+import { LayoutDashboard, Code, Cloud, Server, ShieldCheck, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
+  { to: '/app/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/app/editor', icon: Code, label: 'Editor' },
   { to: '/app/deploy', icon: Cloud, label: 'Deploy' },
   { to: '/app/servers', icon: Server, label: 'Servers' },
