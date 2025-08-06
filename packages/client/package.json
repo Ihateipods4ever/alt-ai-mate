@@ -4,14 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "engines": {
-    "node": "20.x"
+    "node": ">=18.17.0 <21.0.0",
+    "npm": ">=9.0.0"
   },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview",
-    "postinstall": "npm prune --production || true"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",
