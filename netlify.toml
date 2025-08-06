@@ -5,6 +5,8 @@
 
 [build.environment]
   NODE_VERSION = "18.17.1"
+  # Increase memory for the Node.js process to prevent out-of-memory errors during build
+  NODE_OPTIONS = "--max-old-space-size=3072"
 
 [[redirects]]
   from = "/*"
