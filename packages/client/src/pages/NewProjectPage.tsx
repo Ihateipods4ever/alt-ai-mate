@@ -1,155 +1,104 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Sparkles, MoveRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2 } from 'lucide-react';
 
-// Configuration for project types and their specific forms
-const projectTypes = [
-    { id: 'web', name: 'Web App' },
-    { id: 'mobile', name: 'Mobile App' },
-    { id: 'desktop', name: 'Desktop App' },
-    { id: 'game', name: 'Game' },
-    { id: 'ecommerce', name: 'E-commerce' },
-    { id: 'social', name: 'Social Media' },
-    { id: 'hardware', name: 'Hardware/IoT' },
-];
-
-const dynamicFields = {
-    web: [
-        { id: 'frontend', label: 'Frontend Framework', options: ['React', 'Vue', 'Svelte', 'Angular'] },
-        { id: 'backend', label: 'Backend Language', options: ['Node.js', 'Python', 'Go', 'Rust'] },
-    ],
-    mobile: [
-        { id: 'platform', label: 'Platform', options: ['iOS & Android (Cross-Platform)', 'iOS (Native)', 'Android (Native)'] },
-    ],
-    desktop: [
-        { id: 'os', label: 'Target OS', options: ['macOS, Windows, Linux', 'macOS only', 'Windows only'] },
-    ],
-    hardware: [
-        { id: 'microcontroller', label: 'Microcontroller', options: ['Arduino', 'Raspberry Pi', 'ESP32'] },
-        { id: 'components', label: 'Key Components', options: ['Sensors', 'Actuators', 'Displays'] },
-    ],
-};
+// Use Vite's env variable for the API URL, with a fallback for local development.
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 /**
- * Phase 2: The AI Project Creation Hub
- * Guides the user through creating a new project, from idea to detailed requirements.
+ * Phase 2: The New Project page where users define their project.
  */
 function NewProjectPage() {
     const navigate = useNavigate();
+    const [projectName, setProjectName] = useState('');
+    const [projectType, setProjectType] = useState('web');
     const [prompt, setPrompt] = useState('');
-    const [reconstructedPrompt, setReconstructedPrompt] = useState('');
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [selectedType, setSelectedType] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
 
-    // Simulate AI prompt enhancement
-    const handleGeneratePrompt = () => {
-        if (!prompt) return;
-        setIsGenerating(true);
-        setTimeout(() => {
-            const enhanced = `Based on the user's idea of "${prompt}", construct a full-stack application with the following architecture:
-- A scalable and responsive frontend using modern web technologies.
-- A robust backend API to handle data processing and business logic.
-- A secure and efficient database schema.
-- Comprehensive user authentication and authorization mechanisms.
-- The system should be designed for high availability and deployed on a cloud-native infrastructure.`;
-            setReconstructedPrompt(enhanced);
-            setIsGenerating(false);
-        }, 1500);
-    };
-    
-    // Navigate to editor on final step
-    const handleStartBuilding = () => {
-        // Pass project type to editor page via state
-        navigate('/editor', { state: { projectType: selectedType } });
+    const handleGenerateCode = async () => {
+        if (!prompt || !projectName) {
+            setError('Please provide a project name and a prompt.');
+            return;
+        }
+        setIsLoading(true);
+        setError('');
+
+        try {
+            const response = await fetch(`${API_URL}/api/generate-code`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt, projectType, name: projectName })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'An unknown error occurred.');
+            }
+
+            const data = await response.json();
+            
+            // Navigate to the editor page with the generated code and project type in the state.
+            navigate('/editor', {
+                state: {
+                    generatedCode: data.code,
+                    projectType: projectType,
+                }
+            });
+
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
-        <div className="mx-auto max-w-4xl space-y-8">
-            {/* Step 1: Smart Prompt Engine */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>1. Describe Your Vision</CardTitle>
-                    <CardDescription>Start with your core idea. Our AI will help refine it into a technical blueprint.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <Label htmlFor="prompt-input">Your Idea</Label>
-                    <Textarea id="prompt-input" placeholder="e.g., 'A platform for local artists to sell their work...'" rows={4} value={prompt} onChange={(e) => setPrompt(e.target.value)} />
-                    <Button onClick={handleGeneratePrompt} disabled={isGenerating || !prompt}>
-                        {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                        Generate Enhanced Prompt
-                    </Button>
-                    {reconstructedPrompt && (
-                        <div>
-                            <Label htmlFor="reconstructed-prompt">Reconstructed Prompt</Label>
-                            <Textarea id="reconstructed-prompt" readOnly value={reconstructedPrompt} rows={6} className="mt-2 bg-muted" />
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-
-            {/* Step 2: Project Type Selection */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>2. Select Project Type</CardTitle>
-                    <CardDescription>Choose the type of application or prototype you want to build.</CardDescription>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-                    {projectTypes.map((type) => (
-                        <button
-                            key={type.id}
-                            onClick={() => setSelectedType(type.id)}
-                            className={cn(
-                                'rounded-lg border p-4 text-center transition-all hover:shadow-lg',
-                                selectedType === type.id ? 'border-primary ring-2 ring-primary' : 'border-border'
-                            )}
-                        >
-                            <p className="font-semibold">{type.name}</p>
-                        </button>
-                    ))}
-                </CardContent>
-            </Card>
-
-            {/* Step 3: Dynamic Requirements Form */}
-            {selectedType && dynamicFields[selectedType as keyof typeof dynamicFields] && (
-                 <Card>
-                    <CardHeader>
-                        <CardTitle>3. Specify Details</CardTitle>
-                        <CardDescription>Provide more information based on your project type.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {dynamicFields[selectedType as keyof typeof dynamicFields].map((field) => (
-                             <div key={field.id} className="space-y-2">
-                                <Label>{field.label}</Label>
-                                <Select>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder={`Select ${field.label}...`} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {field.options.map(option => <SelectItem key={option} value={option}>{option}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        ))}
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Final action button */}
-            {selectedType && (
-                <div className="text-center">
-                    <Button size="lg" onClick={handleStartBuilding}>
-                        Start Building
-                        <MoveRight className="ml-2 h-5 w-5" />
-                    </Button>
+        <Card className="w-full max-w-2xl">
+            <CardHeader>
+                <CardTitle>Create a New Project</CardTitle>
+                <CardDescription>Describe your project, and let our AI generate the foundation for you.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-6">
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="project-name">Project Name</Label>
+                        <Input id="project-name" placeholder="My Awesome App" value={projectName} onChange={e => setProjectName(e.target.value)} />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="project-type">Project Type</Label>
+                        <Select value={projectType} onValueChange={setProjectType}>
+                            <SelectTrigger id="project-type">
+                                <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="web">Web Application</SelectItem>
+                                <SelectItem value="mobile">Mobile Application</SelectItem>
+                                <SelectItem value="desktop">Desktop Application</SelectItem>
+                                <SelectItem value="hardware">Hardware/IoT</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
-            )}
-        </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="prompt">AI Prompt</Label>
+                    <Textarea id="prompt" placeholder="e.g., 'A simple to-do list app with a clean interface'" rows={4} value={prompt} onChange={e => setPrompt(e.target.value)} />
+                </div>
+                {error && <p className="text-sm text-destructive">{error}</p>}
+            </CardContent>
+            <CardFooter>
+                <Button onClick={handleGenerateCode} disabled={isLoading} className="w-full">
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    {isLoading ? 'Generating...' : 'Generate Code'}
+                </Button>
+            </CardFooter>
+        </Card>
     );
 }
 
