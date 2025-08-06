@@ -1,7 +1,7 @@
 [build]
-  base = "packages/client"
-  command = "npm install --no-audit --no-fund && npm run build"
-  publish = "dist"
+  # Run commands from the monorepo root for proper dependency installation and build context.
+  command = "npm install && npm run build --workspace=client"
+  publish = "packages/client/dist"
 
 [build.environment]
   NODE_VERSION = "18.17.1"
