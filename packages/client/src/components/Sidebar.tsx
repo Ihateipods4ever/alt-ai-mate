@@ -3,10 +3,10 @@ import { Code, Cloud, Server, ShieldCheck, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { to: '/editor', icon: Code, label: 'Editor' },
-  { to: '/deploy', icon: Cloud, label: 'Deploy' },
-  { to: '/servers', icon: Server, label: 'Servers' },
-  { to: '/ip-guard', icon: ShieldCheck, label: 'IP Guard' },
+  { to: '/app/editor', icon: Code, label: 'Editor' },
+  { to: '/app/deploy', icon: Cloud, label: 'Deploy' },
+  { to: '/app/servers', icon: Server, label: 'Servers' },
+  { to: '/app/ip-guard', icon: ShieldCheck, label: 'IP Guard' },
 ];
 
 /**

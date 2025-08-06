@@ -14,12 +14,15 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* The New Project page is a standalone route */}
+        {/* The root path now redirects to the new project flow, which is the intended starting point. */}
+        <Route path="/" element={<Navigate to="/new-project" replace />} />
+
+        {/* The New Project page is a standalone route without the dashboard layout. */}
         <Route path="/new-project" element={<div className="h-screen w-screen bg-background text-foreground p-4 flex items-center justify-center"><NewProjectPage /></div>} />
         
-        {/* All other pages are nested within the main dashboard layout */}
-        <Route path="/" element={<DashboardLayout />}>
-          <Route index element={<Navigate to="/editor" />} />
+        {/* The main dashboard layout now lives under the /app path to avoid conflicts. */}
+        <Route path="/app" element={<DashboardLayout />}>
+          <Route index element={<Navigate to="/app/editor" replace />} />
           <Route path="editor" element={<EditorPage />} />
           <Route path="deploy" element={<DeployPage />} />
           <Route path="servers" element={<ServersPage />} />

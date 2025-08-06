@@ -45,7 +45,7 @@ function NewProjectPage() {
             const data = await response.json();
             
             // Navigate to the editor page with the generated code and project type in the state.
-            navigate('/editor', {
+            navigate('/app/editor', {
                 state: {
                     generatedCode: data.code,
                     projectType: projectType,
