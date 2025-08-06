@@ -12,6 +12,7 @@ import { FileText, Folder, HardDrive, Cpu, MemoryStick, SendHorizontal, Bot, Loa
 import { cn } from "@/lib/utils";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const INTERNAL_API_KEY = import.meta.env.VITE_INTERNAL_API_KEY;
 
 /**
  * A recursive component to render the file explorer tree.
@@ -77,8 +78,11 @@ function EditorPage() {
     try {
       const response = await fetch(`${API_URL}/api/ai-chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input, context: editorDefaultValue }) // Sending code context
+        headers: { 
+            'Content-Type': 'application/json',
+            'x-internal-api-key': INTERNAL_API_KEY,
+        },
+        body: JSON.stringify({ message: input, context: editorContent }) // Sending current code context
       });
       const data = await response.json();
       setMessages([...newMessages, { from: 'ai', text: data.response }]);
@@ -191,28 +195,6 @@ function EditorPage() {
 
     const previewHtml = `
       <html>
-        return (
-            <div className="p-4 h-full flex flex-col">
-                <h3 className="text-lg font-semibold mb-4">Bill of Materials (BOM)</h3>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Component</TableHead>
-                            <TableHead className="text-right">Quantity</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {bomItems.map(item => (
-                             <TableRow key={item.component}>
-                                <TableCell>{item.component}</TableCell>
-                                <TableCell className="text-right">{item.quantity}</TableCell>
-                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </div>
-        )
-    }
         <head>
           <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
           <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
@@ -232,7 +214,7 @@ function EditorPage() {
               root.innerHTML = '<div style="color: red;"><h3>Error</h3><pre>' + err.message + '</pre></div>';
               console.error(err);
             }
-          </script>
+       t    </script>
         </body>
       </html>
     `;

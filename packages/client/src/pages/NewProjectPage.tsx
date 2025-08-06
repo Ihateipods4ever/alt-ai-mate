@@ -10,6 +10,7 @@ import { Loader2 } from 'lucide-react';
 
 // Use Vite's env variable for the API URL, with a fallback for local development.
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const INTERNAL_API_KEY = import.meta.env.VITE_INTERNAL_API_KEY;
 
 /**
  * Phase 2: The New Project page where users define their project.
@@ -19,6 +20,7 @@ function NewProjectPage() {
     const [projectName, setProjectName] = useState('');
     const [projectType, setProjectType] = useState('web');
     const [prompt, setPrompt] = useState('');
+    const [model, setModel] = useState('gemini-pro');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -33,8 +35,11 @@ function NewProjectPage() {
         try {
             const response = await fetch(`${API_URL}/api/generate-code`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt, projectType, name: projectName })
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-internal-api-key': INTERNAL_API_KEY,
+                },
+                body: JSON.stringify({ prompt, projectType, name: projectName, model })
             });
 
             if (!response.ok) {
@@ -85,6 +90,18 @@ function NewProjectPage() {
                             </SelectContent>
                         </Select>
                     </div>
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="ai-model">AI Model</Label>
+                    <Select value={model} onValueChange={setModel}>
+                        <SelectTrigger id="ai-model">
+                            <SelectValue placeholder="Select model" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="gemini-pro">Gemini Pro (Default)</SelectItem>
+                            {/* Add other models here in the future */}
+                        </SelectContent>
+                    </Select>
                 </div>
                 <div className="grid gap-2">
                     <Label htmlFor="prompt">AI Prompt</Label>

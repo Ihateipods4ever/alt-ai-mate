@@ -1,10 +1,25 @@
 const express = require('express');
 const cors = require('cors');
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const app = express();
 const port = process.env.PORT || 3001;
 
+// --- AI and API Key Configuration ---
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const internalApiKey = process.env.INTERNAL_API_KEY;
+
 // --- Middleware ---
+// Authentication middleware to protect AI endpoints
+const authenticateRequest = (req, res, next) => {
+  const apiKey = req.headers['x-internal-api-key'];
+  if (!internalApiKey || !apiKey || apiKey !== internalApiKey) {
+    console.warn('Unauthorized request blocked.');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  next();
+};
+
 // Request logging middleware
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
@@ -60,188 +75,53 @@ app.post('/api/projects', (req, res) => {
 });
 
 /**
- * Dynamically generates React code by analyzing keywords in a prompt.
- * @param {string} prompt The user's request.
- * @param {string} projectType The type of project (e.g., 'web').
- * @returns {string} The generated code.
- */
-function generateDynamicCode(prompt, projectType) {
-  const lowerCasePrompt = prompt.toLowerCase();
-
-  // --- High-Fidelity Templates for Specific Keywords ---
-  if (lowerCasePrompt.includes('coloring book') || lowerCasePrompt.includes('coloringbook')) {
-    return `// AI-Generated Adult Coloring Book App
-import React, { useState } from 'react';
-
-const colors = ['#FF5733', '#33FF57', '#3357FF', '#F1C40F', '#9B59B6', '#E74C3C', '#1ABC9C'];
-
-const ColoringImage = ({ onFill }) => (
-  <svg width="400" height="400" viewBox="0 0 100 100">
-    <g id="coloring-area">
-      <path id="shape1" d="M10 10 H 50 V 50 H 10 Z" fill="white" stroke="black" onClick={() => onFill('shape1')} style={{ cursor: 'pointer' }} />
-      <path id="shape2" d="M60 10 H 90 V 50 H 60 Z" fill="white" stroke="black" onClick={() => onFill('shape2')} style={{ cursor: 'pointer' }} />
-      <circle id="shape3" cx="30" cy="75" r="20" fill="white" stroke="black" onClick={() => onFill('shape3')} style={{ cursor: 'pointer' }} />
-      <path id="shape4" d="M75 60 L 90 90 L 60 90 Z" fill="white" stroke="black" onClick={() => onFill('shape4')} style={{ cursor: 'pointer' }} />
-    </g>
-  </svg>
-);
-
-function App() {
-  const [selectedColor, setSelectedColor] = useState(colors[0]);
-
-  const handleFill = (shapeId) => {
-    const shapeElement = document.getElementById(shapeId);
-    if (shapeElement) shapeElement.setAttribute('fill', selectedColor);
-  };
-
-  return (
-    <div style={{ display: 'flex', fontFamily: 'sans-serif', alignItems: 'center', flexDirection: 'column' }}>
-      <h2>Adult Coloring Book</h2>
-      <p>Select a color and click a shape to fill it.</p>
-      <div style={{ display: 'flex', gap: '10px', margin: '20px 0' }}>
-        {colors.map(color => <div key={color} onClick={() => setSelectedColor(color)} style={{ width: '40px', height: '40px', backgroundColor: color, cursor: 'pointer', border: selectedColor === color ? '3px solid black' : '1px solid grey', borderRadius: '50%' }} />)}
-      </div>
-      <ColoringImage onFill={handleFill} />
-    </div>
-  );
-}
-
-export default App;`;
-  }
-
-  // --- Dynamic Component Assembly based on Keywords ---
-  let imports = new Set(['React', 'useState', 'useEffect']);
-  let states = [];
-  let functions = [];
-  let jsx = [`<h1>${prompt}</h1>`];
-
-  // API fetching logic
-  if (lowerCasePrompt.includes('fetch') || lowerCasePrompt.includes('api') || lowerCasePrompt.includes('data')) {
-    states.push("const [data, setData] = useState(null);");
-    states.push("const [loading, setLoading] = useState(true);");
-    states.push("const [error, setError] = useState(null);");
-
-    functions.push(`
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Using a placeholder API for demonstration
-        const response = await fetch('https://jsonplaceholder.typicode.com/posts/1');
-        if (!response.ok) throw new Error('Network response was not ok');
-        const result = await response.json();
-        setData(result);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);`);
-
-    jsx.push(`
-      <div style={{ marginTop: '20px', padding: '10px', border: '1px solid #ccc', borderRadius: '8px' }}>
-        <h2>API Data Viewer</h2>
-        {loading && <p>Loading data...</p>}
-        {error && <p style={{ color: 'red' }}>Error: {error}</p>}
-        {data && <pre style={{ backgroundColor: '#f5f5f5', padding: '10px', borderRadius: '4px' }}>{JSON.stringify(data, null, 2)}</pre>}
-      </div>
-    `);
-  }
-
-  // Form logic
-  if (lowerCasePrompt.includes('form')) {
-    if (lowerCasePrompt.includes('login')) {
-      states.push("const [email, setEmail] = useState('');");
-      states.push("const [password, setPassword] = useState('');");
-      jsx.push(`
-      <form onSubmit={e => e.preventDefault()} style={{ marginTop: '20px' }}>
-        <h3>Login Form</h3>
-        <div style={{ marginBottom: '10px' }}>
-          <label htmlFor="email" style={{ marginRight: '10px' }}>Email:</label>
-          <input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
-        </div>
-        <div style={{ marginBottom: '10px' }}>
-          <label htmlFor="password" style={{ marginRight: '10px' }}>Password:</label>
-          <input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
-        </div>
-        <button type="submit">Log In</button>
-      </form>
-      `);
-    } else {
-      states.push("const [inputValue, setInputValue] = useState('');");
-      jsx.push(`
-      <form onSubmit={e => e.preventDefault()} style={{ marginTop: '20px' }}>
-        <h3>Submission Form</h3>
-        <label htmlFor="input" style={{ marginRight: '10px' }}>Enter value:</label>
-        <input id="input" value={inputValue} onChange={e => setInputValue(e.target.value)} />
-        <button type="submit">Submit</button>
-      </form>
-      `);
-    }
-  }
-
-  // Add a simple button if no other interactive element is present
-  if (!lowerCasePrompt.includes('form') && !lowerCasePrompt.includes('api') && !lowerCasePrompt.includes('coloring book') && !lowerCasePrompt.includes('coloringbook')) {
-      jsx.push(`
-      <p>This is a sample component generated by ALT-AI-MATE.</p>
-      <button onClick={() => alert('Hello!')}>Click Me</button>
-      `);
-  }
-  
-  // --- Assemble Code ---
-  const importStatement = `import React, { ${Array.from(imports).filter(i => i !== 'React').join(', ')} } from 'react';`;
-  const statesStatement = states.length > 0 ? `  ${states.join('\n  ')}` : '';
-  const functionsStatement = functions.length > 0 ? functions.join('\n') : '';
-  const jsxStatement = jsx.join('\n');
-
-  return `
-${importStatement}
-
-// AI-Generated component for: "${prompt}"
-function App() {
-${statesStatement}
-${functionsStatement}
-
-  return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
-      ${jsxStatement}
-    </div>
-  );
-}
-
-export default App;
-`;
-}
-
-/**
  * @route   POST /api/generate-code
- * @desc    Generates sample code based on a prompt.
- * @access  Public
+ * @desc    Generates code using the Gemini AI model.
+ * @access  Protected
  */
-app.post('/api/generate-code', (req, res) => {
-  const { prompt, projectType } = req.body;
-  console.log('Code generation requested:', { prompt, projectType });
+app.post('/api/generate-code', authenticateRequest, async (req, res) => {
+  const { prompt, projectType, model: modelName } = req.body;
+  console.log('Code generation requested:', { prompt, projectType, modelName });
 
   if (!prompt || !projectType) {
     return res.status(400).json({ error: 'Missing required fields: prompt and projectType' });
   }
 
-  // Use the new, more dynamic code generation logic.
-  const generatedCode = generateDynamicCode(prompt, projectType);
+  try {
+    const model = genAI.getGenerativeModel({ model: modelName || "gemini-pro" });
+    const generationPrompt = `
+      You are an expert React developer. Generate a single, complete React component in a single file.
+      The component should be functional and self-contained.
+      Do not include any explanations, just the raw code.
+      The user's request is: "${prompt}".
+      The component should be named "App" and exported as the default.
+      Start the code with "import React from 'react';".
+    `;
+    
+    const result = await model.generateContent(generationPrompt);
+    const response = await result.response;
+    let text = response.text();
 
-  // Simulate network and processing time
-  setTimeout(() => {
-    res.status(200).json({ code: generatedCode });
-  }, 1200);
+    // Clean up the response to ensure it's just code
+    if (text.startsWith('```jsx')) {
+      text = text.substring(5, text.length - 3).trim();
+    } else if (text.startsWith('```javascript')) {
+        text = text.substring(13, text.length - 3).trim();
+    }
+
+    res.status(200).json({ code: text });
+  } catch (error) {
+    console.error('Error generating code with Gemini:', error);
+    res.status(500).json({ error: 'Failed to generate code.' });
+  }
 });
 
 /**
  * @route   POST /api/ai-chat
  * @desc    Handles interactive AI assistant messages.
- * @access  Public
+ * @access  Protected
  */
-app.post('/api/ai-chat', (req, res) => {
+app.post('/api/ai-chat', authenticateRequest, async (req, res) => {
   const { message, context } = req.body;
   console.log('AI chat message received:', { message });
 
@@ -249,17 +129,28 @@ app.post('/api/ai-chat', (req, res) => {
     return res.status(400).json({ error: 'Message is required.' });
   }
 
-  // More intelligent (but still simulated) response logic
-  let aiResponse = "I'm not sure how to help with that. Could you be more specific?";
-  if (message.toLowerCase().includes('fix')) {
-    aiResponse = "To help you fix this, could you describe the bug or provide the error message you're seeing?";
-  } else if (message.toLowerCase().includes('optimize')) {
-    aiResponse = "Optimization is a great idea! Based on the provided code, one area to look at could be memoizing expensive calculations with `useMemo`. What are your performance goals?";
-  } else if (message.toLowerCase().includes('explain')) {
-    aiResponse = "Of course. This part of the code seems to be responsible for [simulated explanation]. Is there a specific line or function you'd like to dive into?";
-  }
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const chatPrompt = `
+      You are a helpful AI coding assistant named ALT-AI-MATE.
+      The user is asking for help with their code.
+      The user's current code is:
+      ---
+      ${context}
+      ---
+      The user's question is: "${message}"
+      Provide a concise and helpful response. Do not include your own name in the response.
+    `;
 
-  setTimeout(() => res.status(200).json({ response: aiResponse }), 800);
+    const result = await model.generateContent(chatPrompt);
+    const response = await result.response;
+    const text = response.text();
+
+    res.status(200).json({ response: text });
+  } catch (error) {
+    console.error('Error with AI chat:', error);
+    res.status(500).json({ error: 'Failed to get AI response.' });
+  }
 });
 
 // --- Server Initialization ---
