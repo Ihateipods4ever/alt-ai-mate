@@ -1,10 +1,13 @@
 [build]
   base = "packages/client"
-  command = "npm run build"
+  command = "npm ci --no-audit --no-fund --prefer-offline && npm run build"
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "20"
+  NODE_OPTIONS = "--max-old-space-size=1024"
+  NPM_CONFIG_PRODUCTION = "false"
+  CI = "true"
 
 [[redirects]]
   from = "/*"

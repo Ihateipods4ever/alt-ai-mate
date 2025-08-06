@@ -8,9 +8,10 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "NODE_OPTIONS='--max-old-space-size=1024' tsc --skipLibCheck && NODE_OPTIONS='--max-old-space-size=1024' vite build --mode production",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postinstall": "npm prune --production || true"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",

@@ -4,10 +4,14 @@ services:
     runtime: node
     plan: free
     rootDir: packages/server
-    buildCommand: npm install
-    startCommand: node src/index.js
+    buildCommand: npm ci --only=production --no-audit --no-fund --prefer-offline
+    startCommand: node --max-old-space-size=512 src/index.js
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
+      - key: NODE_OPTIONS
+        value: "--max-old-space-size=512"
+      - key: NPM_CONFIG_PRODUCTION
+        value: "true"
