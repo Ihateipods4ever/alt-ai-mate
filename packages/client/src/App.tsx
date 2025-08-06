@@ -2,10 +2,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import NewProjectPage from './pages/NewProjectPage';
 import EditorPage from './pages/EditorPage';
 import DashboardLayout from './components/DashboardLayout';
-// Placeholders for other pages to restore the app structure
-const DeployPage = () => <div>Deploy Page Content</div>;
-const ServersPage = () => <div>Servers Page Content</div>;
-const IpGuardPage = () => <div>IP Guard Page Content</div>;
+import DeployPage from './pages/DeployPage';
+import ServersPage from './pages/ServersPage';
+import IpGuardPage from './pages/IpGuardPage';
 
 /**
  * Main application component with routing.
