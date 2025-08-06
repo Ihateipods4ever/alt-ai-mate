@@ -18,8 +18,9 @@ import { cn } from "@/lib/utils";
 function EditorPage() {
   const location = useLocation();
   // Determine project type from navigation state, default to 'web'
-  const projectType = location.state?.projectType || 'web';
-
+  const { projectType = 'web', generatedCode } = location.state || {};
+  const editorDefaultValue = generatedCode || `// Welcome to ALT-AI-MATE Editor\n// Start typing your code here.\nfunction App() {\n  return <h1>Hello, World!</h1>\n}`;
+  
   const isHardwareProject = projectType === 'hardware';
 
   // State for AI Assistant Chat
@@ -109,7 +110,7 @@ function EditorPage() {
         <Editor
             height="100%"
             defaultLanguage="typescript"
-            defaultValue={`// Welcome to ALT-AI-MATE Editor\nfunction App() {\n  return <h1>Hello, World!</h1>\n}`}
+            defaultValue={editorDefaultValue}
             theme="vs-dark"
             options={{ minimap: { enabled: false } }}
         />

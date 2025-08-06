@@ -1,7 +1,7 @@
 [build]
-  # Run commands from the monorepo root for proper dependency installation and build context.
-  command = "npm install && npm run build --workspace=client"
-  publish = "packages/client/dist"
+  base = "packages/client"
+  command = "chmod +x build.sh && ./build.sh"
+  publish = "dist"
 
 [build.environment]
   NODE_VERSION = "18.17.1"

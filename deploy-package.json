@@ -1,0 +1,15 @@
+{
+  "name": "alt-ai-mate-deploy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Deployment configuration for ALT-AI-MATE without workspaces",
+  "engines": {
+    "node": "18.17.1",
+    "npm": ">=9.0.0"
+  },
+  "scripts": {
+    "build:client": "cd packages/client && npm install && npm run build",
+    "build:server": "cd packages/server && npm install --production",
+    "deploy:netlify": "cd packages/client && npm install && npm run build"
+  }
+}

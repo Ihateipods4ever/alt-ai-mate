@@ -3,7 +3,7 @@ services:
     name: alt-ai-mate-backend
     runtime: node
     plan: free
-    buildCommand: cd packages/server && npm install --production --no-audit --no-fund
+    buildCommand: cd packages/server && chmod +x build.sh && ./build.sh
     startCommand: cd packages/server && node src/index.js
     envVars:
       - key: NODE_ENV
