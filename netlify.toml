@@ -1,17 +1,10 @@
 [build]
   base = "packages/client"
-  command = "chmod +x build.sh && ./build.sh"
+  command = "npm install --no-audit --no-fund && npm run build"
   publish = "dist"
-  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF packages/server/"
 
 [build.environment]
   NODE_VERSION = "20"
-  NODE_OPTIONS = "--max-old-space-size=768"
-  NPM_CONFIG_PRODUCTION = "false"
-  NPM_CONFIG_AUDIT = "false"
-  NPM_CONFIG_FUND = "false"
-  NPM_CONFIG_MAXSOCKETS = "1"
-  CI = "true"
 
 [[redirects]]
   from = "/*"

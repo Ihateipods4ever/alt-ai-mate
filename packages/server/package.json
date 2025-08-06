@@ -3,10 +3,8 @@
   "version": "1.0.0",
   "main": "src/index.js",
   "scripts": {
-    "dev": "node --max-old-space-size=512 src/index.js",
-    "build": "npm ci --only=production --no-audit --no-fund",
-    "start": "node --max-old-space-size=512 src/index.js",
-    "postinstall": "npm prune --production"
+    "dev": "node src/index.js",
+    "start": "node src/index.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
