@@ -60,23 +60,21 @@ app.post('/api/projects', (req, res) => {
 });
 
 /**
- * Generates more realistic code based on keywords in the prompt.
+ * Dynamically generates React code by analyzing keywords in a prompt.
  * @param {string} prompt The user's request.
  * @param {string} projectType The type of project (e.g., 'web').
  * @returns {string} The generated code.
  */
-function generateRealisticCode(prompt, projectType) {
+function generateDynamicCode(prompt, projectType) {
   const lowerCasePrompt = prompt.toLowerCase();
 
-  // --- Keyword-based template matching ---
-
+  // --- High-Fidelity Templates for Specific Keywords ---
   if (lowerCasePrompt.includes('coloring book')) {
     return `// AI-Generated Adult Coloring Book App
 import React, { useState } from 'react';
 
 const colors = ['#FF5733', '#33FF57', '#3357FF', '#F1C40F', '#9B59B6', '#E74C3C', '#1ABC9C'];
 
-// A simple SVG image to color. In a real app, you'd have many complex ones.
 const ColoringImage = ({ onFill }) => (
   <svg width="400" height="400" viewBox="0 0 100 100">
     <g id="coloring-area">
@@ -92,11 +90,8 @@ function App() {
   const [selectedColor, setSelectedColor] = useState(colors[0]);
 
   const handleFill = (shapeId) => {
-    // Apply the fill directly to the SVG element for performance
     const shapeElement = document.getElementById(shapeId);
-    if (shapeElement) {
-      shapeElement.setAttribute('fill', selectedColor);
-    }
+    if (shapeElement) shapeElement.setAttribute('fill', selectedColor);
   };
 
   return (
@@ -104,20 +99,7 @@ function App() {
       <h2>Adult Coloring Book</h2>
       <p>Select a color and click a shape to fill it.</p>
       <div style={{ display: 'flex', gap: '10px', margin: '20px 0' }}>
-        {colors.map(color => (
-          <div 
-            key={color}
-            onClick={() => setSelectedColor(color)}
-            style={{ 
-              width: '40px', 
-              height: '40px', 
-              backgroundColor: color, 
-              cursor: 'pointer',
-              border: selectedColor === color ? '3px solid black' : '1px solid grey',
-              borderRadius: '50%'
-            }}
-          />
-        ))}
+        {colors.map(color => <div key={color} onClick={() => setSelectedColor(color)} style={{ width: '40px', height: '40px', backgroundColor: color, cursor: 'pointer', border: selectedColor === color ? '3px solid black' : '1px solid grey', borderRadius: '50%' }} />)}
       </div>
       <ColoringImage onFill={handleFill} />
     </div>
@@ -127,80 +109,109 @@ function App() {
 export default App;`;
   }
 
-  if (lowerCasePrompt.includes('todo') || lowerCasePrompt.includes('to-do')) {
-    return `// AI-Generated To-Do List App
-import React, { useState } from 'react';
+  // --- Dynamic Component Assembly based on Keywords ---
+  let imports = new Set(['React', 'useState', 'useEffect']);
+  let states = [];
+  let functions = [];
+  let jsx = [`<h1>${prompt}</h1>`];
 
-function App() {
-  const [todos, setTodos] = useState([
-    { id: 1, text: 'Learn React', completed: true },
-    { id: 2, text: 'Build a cool app', completed: false },
-  ]);
-  const [input, setInput] = useState('');
+  // API fetching logic
+  if (lowerCasePrompt.includes('fetch') || lowerCasePrompt.includes('api') || lowerCasePrompt.includes('data')) {
+    states.push("const [data, setData] = useState(null);");
+    states.push("const [loading, setLoading] = useState(true);");
+    states.push("const [error, setError] = useState(null);");
 
-  const addTodo = (e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-    setTodos([...todos, { id: Date.now(), text: input, completed: false }]);
-    setInput('');
-  };
+    functions.push(`
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Using a placeholder API for demonstration
+        const response = await fetch('https://jsonplaceholder.typicode.com/posts/1');
+        if (!response.ok) throw new Error('Network response was not ok');
+        const result = await response.json();
+        setData(result);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);`);
 
-  const toggleTodo = (id) => {
-    setTodos(
-      todos.map(todo =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo
-      )
-    );
-  };
-
-  return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <h1>To-Do List</h1>
-      <form onSubmit={addTodo}>
-        <input 
-          value={input} 
-          onChange={e => setInput(e.target.value)} 
-          placeholder="Add a new task"
-          style={{ padding: '8px', marginRight: '8px' }}
-        />
-        <button type="submit">Add</button>
-      </form>
-      <ul>
-        {todos.map(todo => (
-          <li 
-            key={todo.id} 
-            onClick={() => toggleTodo(todo.id)}
-            style={{ textDecoration: todo.completed ? 'line-through' : 'none', cursor: 'pointer' }}
-          >
-            {todo.text}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-export default App;`;
+    jsx.push(`
+      <div style={{ marginTop: '20px', padding: '10px', border: '1px solid #ccc', borderRadius: '8px' }}>
+        <h2>API Data Viewer</h2>
+        {loading && <p>Loading data...</p>}
+        {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+        {data && <pre style={{ backgroundColor: '#f5f5f5', padding: '10px', borderRadius: '4px' }}>{JSON.stringify(data, null, 2)}</pre>}
+      </div>
+    `);
   }
 
-  // --- Fallback generic template ---
-  return `// Generated ${projectType} app based on: ${prompt}
-import React from 'react';
+  // Form logic
+  if (lowerCasePrompt.includes('form')) {
+    if (lowerCasePrompt.includes('login')) {
+      states.push("const [email, setEmail] = useState('');");
+      states.push("const [password, setPassword] = useState('');");
+      jsx.push(`
+      <form onSubmit={e => e.preventDefault()} style={{ marginTop: '20px' }}>
+        <h3>Login Form</h3>
+        <div style={{ marginBottom: '10px' }}>
+          <label htmlFor="email" style={{ marginRight: '10px' }}>Email:</label>
+          <input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+        </div>
+        <div style={{ marginBottom: '10px' }}>
+          <label htmlFor="password" style={{ marginRight: '10px' }}>Password:</label>
+          <input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
+        </div>
+        <button type="submit">Log In</button>
+      </form>
+      `);
+    } else {
+      states.push("const [inputValue, setInputValue] = useState('');");
+      jsx.push(`
+      <form onSubmit={e => e.preventDefault()} style={{ marginTop: '20px' }}>
+        <h3>Submission Form</h3>
+        <label htmlFor="input" style={{ marginRight: '10px' }}>Enter value:</label>
+        <input id="input" value={inputValue} onChange={e => setInputValue(e.target.value)} />
+        <button type="submit">Submit</button>
+      </form>
+      `);
+    }
+  }
 
-function App() {
-  return (
-    <div>
-      <h1>Your ${projectType} App: ${prompt}</h1>
+  // Add a simple button if no other interactive element is present
+  if (!lowerCasePrompt.includes('form') && !lowerCasePrompt.includes('api') && !lowerCasePrompt.includes('coloring book')) {
+      jsx.push(`
       <p>This is a sample component generated by ALT-AI-MATE.</p>
-      <p>Edit this file to start building your application!</p>
-      <button onClick={() => alert('Hello from your generated app!')}>
-        Click me!
-      </button>
+      <button onClick={() => alert('Hello!')}>Click Me</button>
+      `);
+  }
+  
+  // --- Assemble Code ---
+  const importStatement = `import React, { ${Array.from(imports).filter(i => i !== 'React').join(', ')} } from 'react';`;
+  const statesStatement = states.length > 0 ? `  ${states.join('\n  ')}` : '';
+  const functionsStatement = functions.length > 0 ? functions.join('\n') : '';
+  const jsxStatement = jsx.join('\n');
+
+  return `
+${importStatement}
+
+// AI-Generated component for: "${prompt}"
+function App() {
+${statesStatement}
+${functionsStatement}
+
+  return (
+    <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
+      ${jsxStatement}
     </div>
   );
 }
 
-export default App;`;
+export default App;
+`;
 }
 
 /**
@@ -216,13 +227,39 @@ app.post('/api/generate-code', (req, res) => {
     return res.status(400).json({ error: 'Missing required fields: prompt and projectType' });
   }
 
-  // Use the new, more realistic code generation logic.
-  const generatedCode = generateRealisticCode(prompt, projectType);
+  // Use the new, more dynamic code generation logic.
+  const generatedCode = generateDynamicCode(prompt, projectType);
 
   // Simulate network and processing time
   setTimeout(() => {
     res.status(200).json({ code: generatedCode });
   }, 1200);
+});
+
+/**
+ * @route   POST /api/ai-chat
+ * @desc    Handles interactive AI assistant messages.
+ * @access  Public
+ */
+app.post('/api/ai-chat', (req, res) => {
+  const { message, context } = req.body;
+  console.log('AI chat message received:', { message });
+
+  if (!message) {
+    return res.status(400).json({ error: 'Message is required.' });
+  }
+
+  // More intelligent (but still simulated) response logic
+  let aiResponse = "I'm not sure how to help with that. Could you be more specific?";
+  if (message.toLowerCase().includes('fix')) {
+    aiResponse = "To help you fix this, could you describe the bug or provide the error message you're seeing?";
+  } else if (message.toLowerCase().includes('optimize')) {
+    aiResponse = "Optimization is a great idea! Based on the provided code, one area to look at could be memoizing expensive calculations with `useMemo`. What are your performance goals?";
+  } else if (message.toLowerCase().includes('explain')) {
+    aiResponse = "Of course. This part of the code seems to be responsible for [simulated explanation]. Is there a specific line or function you'd like to dive into?";
+  }
+
+  setTimeout(() => res.status(200).json({ response: aiResponse }), 800);
 });
 
 // --- Server Initialization ---

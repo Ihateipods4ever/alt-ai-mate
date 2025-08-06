@@ -8,8 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { FileText, Folder, HardDrive, Cpu, MemoryStick, SendHorizontal, Bot } from 'lucide-react';
+import { FileText, Folder, HardDrive, Cpu, MemoryStick, SendHorizontal, Bot, Loader2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 /**
  * Phase 3 & 7: The Integrated Editor & Hardware Prototyping page.
@@ -28,16 +30,28 @@ function EditorPage() {
     { from: 'ai', text: 'Hello! How can I help you debug or optimize your code?' }
   ]);
   const [input, setInput] = useState('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if(!input.trim()) return;
+    setIsAiLoading(true);
     const newMessages = [...messages, { from: 'user', text: input }];
     setMessages(newMessages);
     setInput('');
-    // Simulate AI response
-    setTimeout(() => {
-        setMessages([...newMessages, { from: 'ai', text: 'That\'s an interesting question. Let me analyze your code...' }]);
-    }, 1000);
+
+    try {
+      const response = await fetch(`${API_URL}/api/ai-chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: input, context: editorDefaultValue }) // Sending code context
+      });
+      const data = await response.json();
+      setMessages([...newMessages, { from: 'ai', text: data.response }]);
+    } catch (error) {
+      setMessages([...newMessages, { from: 'ai', text: 'Sorry, I encountered an error. Please try again.' }]);
+    } finally {
+      setIsAiLoading(false);
+    }
   };
   
   // Mock data for File Explorer / Component Library
@@ -179,8 +193,10 @@ function EditorPage() {
                 ))}
             </div>
             <div className="p-2 border-t flex items-center gap-2">
-                <Input placeholder="Ask for help..." value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendMessage()}/>
-                <Button onClick={handleSendMessage}><SendHorizontal className="h-4 w-4"/></Button>
+                <Input placeholder="Ask for help..." value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendMessage()} disabled={isAiLoading}/>
+                <Button onClick={handleSendMessage} disabled={isAiLoading}>
+                  {isAiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-4 w-4"/>}
+                </Button>
             </div>
           </TabsContent>
         </Tabs>
