@@ -60,6 +60,8 @@ app.post('/api/projects', (req, res) => {
 });
 
 // --- Server Initialization ---
-app.listen(port, () => {
-  console.log(`🚀 ALT-AI-MATE backend server is listening at http://localhost:${port}`);
+const host = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+app.listen(port, host, () => {
+  console.log(`🚀 ALT-AI-MATE backend server is listening at http://${host}:${port}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });

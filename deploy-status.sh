@@ -12,10 +12,11 @@ backend_status=$(curl -s -o /dev/null -w "%{http_code}" https://alt-ai-mate.onre
 
 if [ "$backend_status" = "200" ]; then
     echo "✅ Backend: ONLINE"
-    echo "Testing code generation endpoint..."
-    curl -s -X POST https://alt-ai-mate.onrender.com/api/generate-code \
+    echo "Testing project creation endpoint..."
+    # Test the /api/projects endpoint since /api/generate-code was removed
+    curl -s -X POST https://alt-ai-mate.onrender.com/api/projects \
          -H "Content-Type: application/json" \
-         -d '{"prompt":"Create a simple todo app","projectType":"web"}' | head -c 200
+         -d '{"name":"Deployment Test","projectType":"web"}' | head -c 200
     echo "..."
 elif [ "$backend_status" = "503" ]; then
     echo "🔄 Backend: STARTING UP (Service Unavailable)"
