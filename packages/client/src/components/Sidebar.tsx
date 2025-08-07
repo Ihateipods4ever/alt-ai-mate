@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Code, Cloud, Server, ShieldCheck, Bot } from 'lucide-react';
+import { LayoutDashboard, Code, Cloud, Server, ShieldCheck, Bot, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -8,6 +8,7 @@ const navItems = [
   { to: '/app/deploy', icon: Cloud, label: 'Deploy' },
   { to: '/app/servers', icon: Server, label: 'Servers' },
   { to: '/app/ip-guard', icon: ShieldCheck, label: 'IP Guard' },
+  { to: '/app/settings', icon: Settings, label: 'Settings' },
 ];
 
 /**

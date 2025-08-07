@@ -6,6 +6,7 @@ import DeployPage from './pages/DeployPage';
 import ServersPage from './pages/ServersPage';
 import DashboardPage from './pages/DashboardPage';
 import IpGuardPage from './pages/IpGuardPage';
+import SettingsPage from './pages/SettingsPage';
 
 /**
  * Main application component with routing.
@@ -28,6 +29,7 @@ function App() {
           <Route path="deploy" element={<DeployPage />} />
           <Route path="servers" element={<ServersPage />} />
           <Route path="ip-guard" element={<IpGuardPage />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>
     </Router>
