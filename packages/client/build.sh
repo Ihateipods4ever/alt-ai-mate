@@ -17,16 +17,17 @@ rm -rf dist node_modules/.cache .vite
 echo "🔄 Clearing npm cache..."
 npm cache clean --force
 
+# Remove package-lock.json and node_modules to fix npm bug with optional dependencies
+echo "🔧 Fixing npm optional dependencies bug..."
+rm -rf node_modules package-lock.json
+
 # Install dependencies with full resolution, including optional dependencies
 echo "📦 Installing dependencies..."
-npm ci --no-audit --no-fund --include=optional
+npm install --no-audit --no-fund --include=optional
 
-# Alternative: If npm ci fails, try regular install
-if [ $? -ne 0 ]; then
-    echo "⚠️ npm ci failed, trying regular install..."
-    rm -rf node_modules package-lock.json
-    npm install --no-audit --no-fund --include=optional
-fi
+# Explicitly install the missing Rollup native module for Linux
+echo "🔧 Installing Rollup native module for Linux..."
+npm install --save-dev @rollup/rollup-linux-x64-gnu --no-audit || echo "⚠️ Optional dependency install failed (expected on non-Linux)"
 
 # Build TypeScript (no emit, just check)
 echo "🔍 Type checking..."
