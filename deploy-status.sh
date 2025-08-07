@@ -26,10 +26,10 @@ fi
 
 echo ""
 echo "🌐 Checking Frontend (Netlify)..."
-echo "URL: https://alt-ai-mate.netlify.app"
+echo "URL: https://alt-aimate.netlify.app"
 
 # Check frontend
-frontend_status=$(curl -s -o /dev/null -w "%{http_code}" https://alt-ai-mate.netlify.app 2>/dev/null || echo "000")
+frontend_status=$(curl -s -o /dev/null -w "%{http_code}" https://alt-aimate.netlify.app 2>/dev/null || echo "000")
 
 if [ "$frontend_status" = "200" ]; then
     echo "✅ Frontend: ONLINE"

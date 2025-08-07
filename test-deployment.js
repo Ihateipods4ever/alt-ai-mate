@@ -107,7 +107,7 @@ async function runTests() {
   console.log('🌐 Testing Frontend (Netlify)...');
   console.log('─'.repeat(40));
   
-  const frontendTest = await testUrl('https://alt-ai-mate.netlify.app', 'Frontend Application');
+  const frontendTest = await testUrl('https://alt-aimate.netlify.app', 'Frontend Application');
   
   console.log('\n📋 Test Summary:');
   console.log('─'.repeat(40));
