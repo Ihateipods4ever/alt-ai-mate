@@ -25,9 +25,9 @@ rm -rf node_modules package-lock.json
 echo "📦 Installing dependencies..."
 npm install --no-audit --no-fund --include=optional
 
-# Explicitly install the missing Rollup native module for Linux
-echo "🔧 Installing Rollup native module for Linux..."
-npm install --save-dev @rollup/rollup-linux-x64-gnu --no-audit || echo "⚠️ Optional dependency install failed (expected on non-Linux)"
+# Explicitly install the missing platform-specific modules for Linux
+echo "🔧 Installing platform-specific modules for Linux..."
+npm install --save-dev @rollup/rollup-linux-x64-gnu @esbuild/linux-x64 --no-audit || echo "⚠️ Optional dependency install failed (expected on non-Linux)"
 
 # Build TypeScript (no emit, just check)
 echo "🔍 Type checking..."
