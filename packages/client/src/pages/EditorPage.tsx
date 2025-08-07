@@ -130,12 +130,21 @@ const buildFileTree = (files: Record<string, { content: string }>) => {
     return tree.children || [];
 };
 
+// Define a type with an index signature for the files state
+interface FileContent {
+  content: string;
+}
+
+interface FileState {
+  [key: string]: FileContent;
+}
+
 function EditorPage() {
   const location = useLocation();
   const { projectType = 'web', generatedCode } = location.state || {};
   const isHardwareProject = projectType === 'hardware';
 
-  const initialFiles = {
+  const initialFiles: FileState = {
     'src/App.tsx': {
         content: generatedCode || `// Welcome to ALT-AI-MATE Editor\n// Select a file to start editing.\nfunction App() {\n  return <h1>Hello, World!</h1>\n}`
     },
@@ -147,7 +156,7 @@ function EditorPage() {
     }
   };
 
-  const [files, setFiles] = useState(initialFiles);
+  const [files, setFiles] = useState<FileState>(initialFiles);
   const [activeFile, setActiveFile] = useState('src/App.tsx');
   const [fileTree, setFileTree] = useState(buildFileTree(initialFiles));
   const [editorContent, setEditorContent] = useState(initialFiles[activeFile]?.content || '');
@@ -327,7 +336,7 @@ function EditorPage() {
         <Editor
             height="100%"
             defaultLanguage="typescript"
-            value={editorContent} // Use 'value' instead of 'defaultValue' for controlled component
+            value={editorContent}
             onChange={handleEditorChange}
             options={{ minimap: { enabled: false } }}
         />
