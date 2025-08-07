@@ -9,8 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Folder, HardDrive, Cpu, MemoryStick, SendHorizontal, Bot, Loader2, AlertCircle } from 'lucide-react';
+import { FileText, Folder, HardDrive, Cpu, MemoryStick, SendHorizontal, Bot, Loader2, AlertCircle, Download } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const INTERNAL_API_KEY = import.meta.env.VITE_INTERNAL_API_KEY;
