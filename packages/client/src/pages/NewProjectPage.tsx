@@ -1,12 +1,13 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from 'lucide-react';
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Settings, AlertCircle } from 'lucide-react';
 
 // Use Vite's env variable for the API URL, with a fallback for local development.
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -20,15 +21,69 @@ function NewProjectPage() {
     const [projectName, setProjectName] = useState('');
     const [projectType, setProjectType] = useState('web');
     const [prompt, setPrompt] = useState('');
-    const [model, setModel] = useState('gemini-pro');
+    const [model, setModel] = useState('gemini-1.5-pro');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    const [availableModels, setAvailableModels] = useState([]);
+    const [apiKeys, setApiKeys] = useState({
+        gemini: '',
+        openai: '',
+        anthropic: ''
+    });
+
+    // Load API keys and available models on component mount
+    useEffect(() => {
+        // Load API keys from localStorage
+        const savedKeys = localStorage.getItem('alt-ai-mate-api-keys');
+        if (savedKeys) {
+            try {
+                setApiKeys(JSON.parse(savedKeys));
+            } catch (error) {
+                console.error('Error loading saved API keys:', error);
+            }
+        }
+
+        // Fetch available models from the server
+        const fetchModels = async () => {
+            try {
+                const response = await fetch(`${API_URL}/api/models`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setAvailableModels(data.models);
+                }
+            } catch (error) {
+                console.error('Error fetching models:', error);
+            }
+        };
+
+        fetchModels();
+    }, []);
+
+    const getModelProvider = (modelId: string) => {
+        if (modelId.startsWith('gemini')) return 'gemini';
+        if (modelId.startsWith('gpt')) return 'openai';
+        if (modelId.startsWith('claude')) return 'anthropic';
+        return 'gemini';
+    };
+
+    const isModelAvailable = (modelId: string) => {
+        const provider = getModelProvider(modelId);
+        return apiKeys[provider as keyof typeof apiKeys] !== '';
+    };
 
     const handleGenerateCode = async () => {
         if (!prompt || !projectName) {
             setError('Please provide a project name and a prompt.');
             return;
         }
+
+        // Check if the selected model has an API key configured
+        if (!isModelAvailable(model)) {
+            const provider = getModelProvider(model);
+            setError(`Please configure your ${provider.charAt(0).toUpperCase() + provider.slice(1)} API key in Settings before using this model.`);
+            return;
+        }
+
         setIsLoading(true);
         setError('');
 
@@ -39,7 +94,13 @@ function NewProjectPage() {
                     'Content-Type': 'application/json',
                     'x-internal-api-key': INTERNAL_API_KEY,
                 },
-                body: JSON.stringify({ prompt, projectType, name: projectName, model })
+                body: JSON.stringify({ 
+                    prompt, 
+                    projectType, 
+                    name: projectName, 
+                    model,
+                    apiKeys 
+                })
             });
 
             if (!response.ok) {
@@ -92,16 +153,49 @@ function NewProjectPage() {
                     </div>
                 </div>
                 <div className="grid gap-2">
-                    <Label htmlFor="ai-model">AI Model</Label>
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="ai-model">AI Model</Label>
+                        <Link to="/app/settings" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+                            <Settings className="h-3 w-3" />
+                            Configure API Keys
+                        </Link>
+                    </div>
                     <Select value={model} onValueChange={setModel}>
                         <SelectTrigger id="ai-model">
                             <SelectValue placeholder="Select model" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="gemini-pro">Gemini Pro (Default)</SelectItem>
-                            {/* Add other models here in the future */}
+                            {availableModels.length > 0 ? (
+                                availableModels.map((modelOption: any) => (
+                                    <SelectItem 
+                                        key={modelOption.id} 
+                                        value={modelOption.id}
+                                        disabled={!isModelAvailable(modelOption.id)}
+                                    >
+                                        <div className="flex items-center justify-between w-full">
+                                            <span>{modelOption.name}</span>
+                                            <div className="flex items-center gap-2 ml-2">
+                                                <Badge variant="outline" className="text-xs">
+                                                    {modelOption.provider}
+                                                </Badge>
+                                                {!isModelAvailable(modelOption.id) && (
+                                                    <AlertCircle className="h-3 w-3 text-orange-500" />
+                                                )}
+                                            </div>
+                                        </div>
+                                    </SelectItem>
+                                ))
+                            ) : (
+                                <SelectItem value="gemini-1.5-pro">Gemini 1.5 Pro (Default)</SelectItem>
+                            )}
                         </SelectContent>
                     </Select>
+                    {!isModelAvailable(model) && (
+                        <div className="flex items-center gap-2 text-sm text-orange-600 bg-orange-50 p-2 rounded-md">
+                            <AlertCircle className="h-4 w-4" />
+                            <span>API key required for this model. Configure it in Settings.</span>
+                        </div>
+                    )}
                 </div>
                 <div className="grid gap-2">
                     <Label htmlFor="prompt">AI Prompt</Label>

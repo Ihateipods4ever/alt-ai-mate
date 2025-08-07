@@ -76,13 +76,22 @@ function EditorPage() {
     setInput('');
 
     try {
+      // Load API keys from localStorage
+      const savedKeys = localStorage.getItem('alt-ai-mate-api-keys');
+      const apiKeys = savedKeys ? JSON.parse(savedKeys) : {};
+
       const response = await fetch(`${API_URL}/api/ai-chat`, {
         method: 'POST',
         headers: { 
             'Content-Type': 'application/json',
             'x-internal-api-key': INTERNAL_API_KEY,
         },
-        body: JSON.stringify({ message: input, context: editorContent }) // Sending current code context
+        body: JSON.stringify({ 
+          message: input, 
+          context: editorContent,
+          model: 'gemini-1.5-pro', // Default model for chat
+          apiKeys 
+        })
       });
       const data = await response.json();
       setMessages([...newMessages, { from: 'ai', text: data.response }]);
