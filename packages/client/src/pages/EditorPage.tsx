@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useLocation, NavLink } from 'react-router-dom';
 import Editor from "@monaco-editor/react";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { FileText, Folder, HardDrive, Cpu, MemoryStick, SendHorizontal, Bot, Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { FileText, Folder, HardDrive, Cpu, MemoryStick, SendHorizontal, Bot, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -67,19 +68,73 @@ function EditorPage() {
   ]);
   const [input, setInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('gemini-1.5-pro');
+  const [availableModels, setAvailableModels] = useState([]);
+  const [apiKeys, setApiKeys] = useState({
+    gemini: '',
+    openai: '',
+    anthropic: ''
+  });
+
+  // Load API keys and available models on component mount
+  useEffect(() => {
+    // Load API keys from localStorage
+    const savedKeys = localStorage.getItem('alt-ai-mate-api-keys');
+    if (savedKeys) {
+      try {
+        setApiKeys(JSON.parse(savedKeys));
+      } catch (error) {
+        console.error('Error loading saved API keys:', error);
+      }
+    }
+
+    // Fetch available models from the server
+    const fetchModels = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/models`);
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableModels(data.models);
+        }
+      } catch (error) {
+        console.error('Error fetching models:', error);
+      }
+    };
+
+    fetchModels();
+  }, []);
+
+  const getModelProvider = (modelId: string) => {
+    if (modelId.startsWith('gemini')) return 'gemini';
+    if (modelId.startsWith('gpt')) return 'openai';
+    if (modelId.startsWith('claude')) return 'anthropic';
+    return 'gemini';
+  };
+
+  const isModelAvailable = (modelId: string) => {
+    const provider = getModelProvider(modelId);
+    return apiKeys[provider as keyof typeof apiKeys] !== '';
+  };
 
   const handleSendMessage = async () => {
     if(!input.trim()) return;
+    
+    // Check if the selected model has an API key configured
+    if (!isModelAvailable(selectedModel)) {
+      const provider = getModelProvider(selectedModel);
+      setMessages([...messages, { 
+        from: 'ai', 
+        text: `Please configure your ${provider.charAt(0).toUpperCase() + provider.slice(1)} API key in Settings before using this model.` 
+      }]);
+      return;
+    }
+
     setIsAiLoading(true);
     const newMessages = [...messages, { from: 'user', text: input }];
     setMessages(newMessages);
     setInput('');
 
     try {
-      // Load API keys from localStorage
-      const savedKeys = localStorage.getItem('alt-ai-mate-api-keys');
-      const apiKeys = savedKeys ? JSON.parse(savedKeys) : {};
-
       const response = await fetch(`${API_URL}/api/ai-chat`, {
         method: 'POST',
         headers: { 
@@ -89,7 +144,7 @@ function EditorPage() {
         body: JSON.stringify({ 
           message: input, 
           context: editorContent,
-          model: 'gemini-1.5-pro', // Default model for chat
+          model: selectedModel,
           apiKeys 
         })
       });
@@ -254,6 +309,49 @@ function EditorPage() {
           </TabsContent>
           {/* AI Assistant Tab */}
           <TabsContent value="ai-assistant" className="flex-grow flex flex-col">
+            {/* Model Selection */}
+            <div className="p-4 border-b">
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <Select value={selectedModel} onValueChange={setSelectedModel}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select AI model" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableModels.length > 0 ? (
+                        availableModels.map((modelOption: any) => (
+                          <SelectItem 
+                            key={modelOption.id} 
+                            value={modelOption.id}
+                            disabled={!isModelAvailable(modelOption.id)}
+                          >
+                            <div className="flex items-center justify-between w-full">
+                              <span>{modelOption.name}</span>
+                              <div className="flex items-center gap-2 ml-2">
+                                <Badge variant="outline" className="text-xs">
+                                  {modelOption.provider}
+                                </Badge>
+                                {!isModelAvailable(modelOption.id) && (
+                                  <AlertCircle className="h-3 w-3 text-orange-500" />
+                                )}
+                              </div>
+                            </div>
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="gemini-1.5-pro">Gemini 1.5 Pro (Default)</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {!isModelAvailable(selectedModel) && (
+                  <div className="flex items-center gap-2 text-sm text-orange-600">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>API key required</span>
+                  </div>
+                )}
+              </div>
+            </div>
             <div className="flex-grow p-4 space-y-4 overflow-y-auto">
                 {messages.map((msg, index) => (
                     <div key={index} className={cn("flex items-start gap-3", msg.from === 'user' && "justify-end")}>
