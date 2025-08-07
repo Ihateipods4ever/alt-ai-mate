@@ -89,7 +89,7 @@ app.post('/api/generate-code', authenticateRequest, async (req, res) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: modelName || "gemini-pro" });
+    const model = genAI.getGenerativeModel({ model: modelName || "gemini-1.5-pro" });
     const generationPrompt = `
       You are an expert React developer. Generate a single, complete React component in a single file.
       The component should be functional and self-contained.
