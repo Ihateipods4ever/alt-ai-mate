@@ -68,7 +68,7 @@ function EditorPage() {
   ]);
   const [input, setInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('gemini-1.5-pro');
+  const [selectedModel, setSelectedModel] = useState('gemini-1.5-flash');
   const [availableModels, setAvailableModels] = useState([]);
   const [apiKeys, setApiKeys] = useState({
     gemini: '',
@@ -114,6 +114,11 @@ function EditorPage() {
   const isModelAvailable = (modelId: string) => {
     const provider = getModelProvider(modelId);
     return apiKeys[provider as keyof typeof apiKeys] !== '';
+  };
+
+  const handleModelChange = (newModel: string) => {
+    console.log('Model changed from', selectedModel, 'to', newModel);
+    setSelectedModel(newModel);
   };
 
   const handleSendMessage = async () => {
@@ -313,11 +318,12 @@ function EditorPage() {
             <div className="p-4 border-b">
               <div className="flex items-center gap-4">
                 <div className="flex-1">
-                  <Select value={selectedModel} onValueChange={setSelectedModel}>
+                  <div className="text-sm text-muted-foreground mb-1">AI Model:</div>
+                  <Select value={selectedModel} onValueChange={handleModelChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select AI model" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="z-[100]">
                       {availableModels.length > 0 ? (
                         availableModels.map((modelOption: any) => (
                           <SelectItem 
@@ -325,31 +331,27 @@ function EditorPage() {
                             value={modelOption.id}
                             disabled={!isModelAvailable(modelOption.id)}
                           >
-                            <div className="flex items-center justify-between w-full">
-                              <span>{modelOption.name}</span>
-                              <div className="flex items-center gap-2 ml-2">
-                                <Badge variant="outline" className="text-xs">
-                                  {modelOption.provider}
-                                </Badge>
-                                {!isModelAvailable(modelOption.id) && (
-                                  <AlertCircle className="h-3 w-3 text-orange-500" />
-                                )}
-                              </div>
-                            </div>
+                            {modelOption.name} ({modelOption.provider})
+                            {!isModelAvailable(modelOption.id) && " - API key required"}
                           </SelectItem>
                         ))
                       ) : (
-                        <SelectItem value="gemini-1.5-pro">Gemini 1.5 Pro (Default)</SelectItem>
+                        <SelectItem value="gemini-1.5-flash">Gemini 1.5 Flash (Default)</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
                 </div>
-                {!isModelAvailable(selectedModel) && (
-                  <div className="flex items-center gap-2 text-sm text-orange-600">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>API key required</span>
+                <div className="flex flex-col gap-1">
+                  <div className="text-xs text-muted-foreground">
+                    Current: {selectedModel}
                   </div>
-                )}
+                  {!isModelAvailable(selectedModel) && (
+                    <div className="flex items-center gap-2 text-sm text-orange-600">
+                      <AlertCircle className="h-4 w-4" />
+                      <span>API key required</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex-grow p-4 space-y-4 overflow-y-auto">

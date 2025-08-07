@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,7 @@ function SettingsPage() {
   });
   
   const [savedStatus, setSavedStatus] = useState('');
+  const saveTimeoutRef = useRef<number | null>(null);
 
   // Load API keys from localStorage on component mount
   useEffect(() => {
@@ -37,11 +38,32 @@ function SettingsPage() {
     }
   }, []);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const saveApiKeys = (keys: typeof apiKeys) => {
+    try {
+      localStorage.setItem('alt-ai-mate-api-keys', JSON.stringify(keys));
+      setSavedStatus('API keys saved successfully!');
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = window.setTimeout(() => setSavedStatus(''), 3000);
+    } catch (error) {
+      setSavedStatus('Error saving API keys');
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = window.setTimeout(() => setSavedStatus(''), 3000);
+    }
+  };
+
   const handleApiKeyChange = (provider: string, value: string) => {
-    setApiKeys(prev => ({
-      ...prev,
-      [provider]: value
-    }));
+    const newKeys = { ...apiKeys, [provider]: value };
+    setApiKeys(newKeys);
+    saveApiKeys(newKeys);
   };
 
   const toggleShowKey = (provider: string) => {
@@ -51,22 +73,13 @@ function SettingsPage() {
     }));
   };
 
-  const saveApiKeys = () => {
-    try {
-      localStorage.setItem('alt-ai-mate-api-keys', JSON.stringify(apiKeys));
-      setSavedStatus('API keys saved successfully!');
-      setTimeout(() => setSavedStatus(''), 3000);
-    } catch (error) {
-      setSavedStatus('Error saving API keys');
-      setTimeout(() => setSavedStatus(''), 3000);
-    }
-  };
-
   const clearApiKey = (provider: string) => {
-    setApiKeys(prev => ({
-      ...prev,
+    const newKeys = {
+      ...apiKeys,
       [provider]: ''
-    }));
+    };
+    setApiKeys(newKeys);
+    saveApiKeys(newKeys);
   };
 
   const providers = [
@@ -200,12 +213,6 @@ function SettingsPage() {
                 </Card>
               ))}
               
-              <div className="flex justify-end">
-                <Button onClick={saveApiKeys} className="flex items-center gap-2">
-                  <Save className="h-4 w-4" />
-                  Save API Keys
-                </Button>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
