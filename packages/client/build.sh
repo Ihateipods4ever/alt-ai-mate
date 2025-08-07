@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Exit immediately if a command exits with a non-zero status.
+set -e
+
 echo "🚀 Starting optimized build process..."
 
 # Set memory limits
@@ -10,7 +13,7 @@ rm -rf dist node_modules/.cache
 
 # Install dependencies with minimal memory usage
 echo "📦 Installing dependencies..."
-npm install --no-audit --no-fund --prefer-offline --ignore-scripts --maxsockets=1 --no-optional
+npm install --no-audit --no-fund --prefer-offline --ignore-scripts --maxsockets=1
 
 # Build TypeScript (no emit, just check)
 echo "🔍 Type checking..."
