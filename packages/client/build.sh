@@ -10,7 +10,7 @@ rm -rf dist node_modules/.cache
 
 # Install dependencies with minimal memory usage
 echo "📦 Installing dependencies..."
-npm ci --no-audit --no-fund --prefer-offline --ignore-scripts --maxsockets=1 --no-optional
+npm install --no-audit --no-fund --prefer-offline --ignore-scripts --maxsockets=1 --no-optional
 
 # Build TypeScript (no emit, just check)
 echo "🔍 Type checking..."

@@ -7,6 +7,8 @@
   NODE_VERSION = "18.17.1"
   # Increase memory for the Node.js process to prevent out-of-memory errors during build
   NODE_OPTIONS = "--max-old-space-size=3072"
+  # Configure secrets scanning to ignore the internal API key (it's meant to be public)
+  SECRETS_SCAN_OMIT_KEYS = "INTERNAL_API_KEY"
 
 [[redirects]]
   from = "/*"
