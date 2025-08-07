@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { useLocation, NavLink } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import Editor from "@monaco-editor/react";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,8 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { FileText, Folder, HardDrive, Cpu, MemoryStick, SendHorizontal, Bot, Loader2, AlertCircle, Download } from 'lucide-react';
+import { Bot, Loader2, AlertCircle, Download, FileText, Folder, HardDrive, Cpu, MemoryStick, SendHorizontal } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -17,70 +16,172 @@ import { saveAs } from 'file-saver';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const INTERNAL_API_KEY = import.meta.env.VITE_INTERNAL_API_KEY;
 
-/**
- * A recursive component to render the file explorer tree.
- */
-const FileTreeItem = ({ item, level = 0 }: { item: any, level?: number }) => {
-  const [isOpen, setIsOpen] = useState(item.type === 'folder');
+// Type definition for a message
+interface Message {
+  from: 'user' | 'ai';
+  text: string;
+}
 
-  const handleToggle = () => {
-    if (item.type === 'folder') {
-      setIsOpen(!isOpen);
-    }
-    // In a real app, clicking a file would update the editor content.
+// Type definition for an API key
+interface ApiKeys {
+  gemini: string;
+  openai: string;
+  anthropic: string;
+}
+
+// Type definition for a file tree item
+interface FileTreeItemProps {
+  item: {
+    name: string;
+    type: 'folder' | 'file';
+    path: string;
+    children?: FileTreeItemProps['item'][];
   };
+  level?: number;
+  onFileSelect: (path: string) => void;
+  activeFile: string;
+}
 
-  return (
-    <>
-      <div
-        onClick={handleToggle}
-        style={{ paddingLeft: `${level * 1.5}rem` }}
-        className="flex items-center gap-2 cursor-pointer p-2 hover:bg-muted rounded-md text-sm"
-      >
-        {item.type === 'folder' ? (
-          <Folder className="h-4 w-4 text-primary" />
-        ) : (
-          <FileText className="h-4 w-4 text-muted-foreground" />
-        )}
-        {item.name}
-      </div>
-      {isOpen && item.children && (
-        <ul className="space-y-1">{item.children.map((child: any) => <FileTreeItem key={child.name} item={child} level={level + 1} />)}</ul>
-      )}
-    </>
-  );
+// Recursive component to render file tree
+const FileTreeItem = ({ item, level = 0, onFileSelect, activeFile }: FileTreeItemProps) => {
+    const [isOpen, setIsOpen] = useState(true); // Default to open for folders
+
+    const handleToggle = () => {
+        if (item.type === 'folder') {
+            setIsOpen(!isOpen);
+        } else {
+            onFileSelect(item.path);
+        }
+    };
+
+    const isSelected = item.type === 'file' && item.path === activeFile;
+
+    return (
+        <>
+            <div
+                onClick={handleToggle}
+                style={{ paddingLeft: `${level * 1.5}rem` }}
+                className={cn(
+                    "flex items-center gap-2 cursor-pointer p-2 hover:bg-muted rounded-md text-sm",
+                    isSelected && "bg-muted"
+                )}
+            >
+                {item.type === 'folder' ? (
+                    <Folder className="h-4 w-4 text-primary" />
+                ) : (
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                )}
+                {item.name}
+            </div>
+            {isOpen && item.children && (
+                <ul className="space-y-1">
+                    {item.children.map((child) => (
+                        <FileTreeItem
+                            key={child.path}
+                            item={child}
+                            level={level + 1}
+                            onFileSelect={onFileSelect}
+                            activeFile={activeFile}
+                        />
+                    ))}
+                </ul>
+            )}
+        </>
+    );
 };
 
-/**
- * Phase 3 & 7: The Integrated Editor & Hardware Prototyping page.
- * The view adapts based on the project type selected in the New Project page.
- */
+// Helper function to build a file tree structure from a flat object
+const buildFileTree = (files: Record<string, { content: string }>) => {
+    const tree: FileTreeItemProps['item'] = { name: 'root', type: 'folder', path: '', children: [] };
+
+    Object.keys(files).forEach(path => {
+        const parts = path.split('/');
+        let currentLevel = tree.children;
+
+        parts.forEach((part, index) => {
+            const isFile = index === parts.length - 1;
+            let node = currentLevel?.find(n => n.name === part && n.type === (isFile ? 'file' : 'folder'));
+
+            if (!node) {
+                if (isFile) {
+                    node = { name: part, type: 'file', path };
+                    currentLevel?.push(node);
+                } else {
+                    const folderPath = parts.slice(0, index + 1).join('/');
+                    node = { name: part, type: 'folder', path: folderPath, children: [] };
+                    currentLevel?.push(node);
+                }
+            }
+
+            if (!isFile) {
+                currentLevel = node.children;
+            }
+        });
+    });
+
+    const sortTree = (node: FileTreeItemProps['item']) => {
+        if (node.children) {
+            node.children.sort((a, b) => (a.type === 'folder' ? -1 : 1) - (b.type === 'folder' ? -1 : 1) || a.name.localeCompare(b.name));
+            node.children.forEach(sortTree);
+        }
+    };
+    sortTree(tree);
+
+    return tree.children || [];
+};
+
 function EditorPage() {
   const location = useLocation();
-  // Determine project type from navigation state, default to 'web'
   const { projectType = 'web', generatedCode } = location.state || {};
-  const editorDefaultValue = generatedCode || `// Welcome to ALT-AI-MATE Editor\n// Start typing your code here.\nfunction App() {\n  return <h1>Hello, World!</h1>\n}`;
-  const [editorContent, setEditorContent] = useState(editorDefaultValue);
-  
   const isHardwareProject = projectType === 'hardware';
 
-  // State for AI Assistant Chat
-  const [messages, setMessages] = useState([
+  const initialFiles = {
+    'src/App.tsx': {
+        content: generatedCode || `// Welcome to ALT-AI-MATE Editor\n// Select a file to start editing.\nfunction App() {\n  return <h1>Hello, World!</h1>\n}`
+    },
+    'src/index.css': {
+        content: `body {\n  font-family: sans-serif;\n  margin: 20px;\n  background-color: #f0f0f0;\n}`
+    },
+    'package.json': {
+        content: JSON.stringify({ name: 'my-project', version: '0.1.0' }, null, 2)
+    }
+  };
+
+  const [files, setFiles] = useState(initialFiles);
+  const [activeFile, setActiveFile] = useState('src/App.tsx');
+  const [fileTree, setFileTree] = useState(buildFileTree(initialFiles));
+  const [editorContent, setEditorContent] = useState(initialFiles[activeFile]?.content || '');
+
+  const [messages, setMessages] = useState<Message[]>([
     { from: 'ai', text: 'Hello! How can I help you debug or optimize your code?' }
   ]);
   const [input, setInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState('gemini-1.5-flash');
-  const [availableModels, setAvailableModels] = useState([]);
-  const [apiKeys, setApiKeys] = useState({
+  const [availableModels, setAvailableModels] = useState<any[]>([]);
+  const [apiKeys, setApiKeys] = useState<ApiKeys>({
     gemini: '',
     openai: '',
     anthropic: ''
   });
 
-  // Load API keys and available models on component mount
+  // Handle file selection and update editor content
+  const handleFileSelect = (path: string) => {
+    setActiveFile(path);
+    setEditorContent(files[path]?.content || '');
+  };
+
+  // Update file content when editor changes
+  const handleEditorChange = (value: string | undefined) => {
+    const updatedFiles = { ...files };
+    if (activeFile && value !== undefined) {
+      updatedFiles[activeFile].content = value;
+      setFiles(updatedFiles);
+    }
+    setEditorContent(value || '');
+  };
+
   useEffect(() => {
-    // Load API keys from localStorage
     const savedKeys = localStorage.getItem('alt-ai-mate-api-keys');
     if (savedKeys) {
       try {
@@ -90,7 +191,6 @@ function EditorPage() {
       }
     }
 
-    // Fetch available models from the server
     const fetchModels = async () => {
       try {
         const response = await fetch(`${API_URL}/api/models`);
@@ -119,57 +219,50 @@ function EditorPage() {
   };
 
   const handleModelChange = (newModel: string) => {
-    console.log('Model changed from', selectedModel, 'to', newModel);
     setSelectedModel(newModel);
   };
 
   const handleSendMessage = async () => {
-    if(!input.trim()) return;
-    
-    // Check if the selected model has an API key configured
+    if (!input.trim()) return;
+
     if (!isModelAvailable(selectedModel)) {
       const provider = getModelProvider(selectedModel);
-      setMessages([...messages, { 
-        from: 'ai', 
-        text: `Please configure your ${provider.charAt(0).toUpperCase() + provider.slice(1)} API key in Settings before using this model.` 
+      setMessages(prevMessages => [...prevMessages, {
+        from: 'ai',
+        text: `Please configure your ${provider.charAt(0).toUpperCase() + provider.slice(1)} API key in Settings before using this model.`
       }]);
       return;
     }
 
     setIsAiLoading(true);
-    const newMessages = [...messages, { from: 'user', text: input }];
-    setMessages(newMessages);
+    const newMessage: Message = { from: 'user', text: input };
+    setMessages(prevMessages => [...prevMessages, newMessage]);
     setInput('');
 
     try {
       const response = await fetch(`${API_URL}/api/ai-chat`, {
         method: 'POST',
-        headers: { 
+        headers: {
             'Content-Type': 'application/json',
             'x-internal-api-key': INTERNAL_API_KEY,
         },
-        body: JSON.stringify({ 
-          message: input, 
+        body: JSON.stringify({
+          message: input,
           context: editorContent,
           model: selectedModel,
-          apiKeys 
+          apiKeys
         })
       });
       const data = await response.json();
-      setMessages([...newMessages, { from: 'ai', text: data.response }]);
+      setMessages(prevMessages => [...prevMessages, { from: 'ai', text: data.response }]);
     } catch (error) {
-      setMessages([...newMessages, { from: 'ai', text: 'Sorry, I encountered an error. Please try again.' }]);
+      console.error('AI chat error:', error);
+      setMessages(prevMessages => [...prevMessages, { from: 'ai', text: 'Sorry, I encountered an error. Please try again.' }]);
     } finally {
       setIsAiLoading(false);
     }
   };
-  
-  // Mock data for File Explorer / Component Library
-  const files = [
-    { name: 'src', type: 'folder', children: [{ name: 'App.tsx', type: 'file' }, { name: 'index.css', type: 'file' }] },
-    { name: 'package.json', type: 'file' }
-  ];
-  
+
   const hardwareComponents = [
       { name: 'Arduino Uno', icon: Cpu },
       { name: 'Raspberry Pi 4', icon: Cpu },
@@ -177,14 +270,13 @@ function EditorPage() {
       { name: 'LED', icon: MemoryStick },
       { name: 'Temperature Sensor', icon: MemoryStick },
   ];
-  
+
   const bomItems = [
       { component: 'Arduino Uno', quantity: 1 },
       { component: 'Temperature Sensor (DHT11)', quantity: 2 },
       { component: '10k Ohm Resistor', quantity: 4 },
   ];
 
-  // Render the left panel based on project type
   const renderLeftPanel = () => {
     if (isHardwareProject) {
       return (
@@ -206,15 +298,19 @@ function EditorPage() {
       <div className="p-4">
         <h3 className="text-lg font-semibold mb-4">File Explorer</h3>
         <ul className="space-y-1">
-            {files.map(file => (
-                <FileTreeItem key={file.name} item={file} />
+            {fileTree.map((item) => (
+                <FileTreeItem
+                    key={item.name}
+                    item={item}
+                    onFileSelect={handleFileSelect}
+                    activeFile={activeFile}
+                />
             ))}
         </ul>
       </div>
     );
   };
-  
-  // Render the center panel based on project type
+
   const renderCenterPanel = () => {
       if(isHardwareProject) {
           return (
@@ -231,14 +327,13 @@ function EditorPage() {
         <Editor
             height="100%"
             defaultLanguage="typescript"
-            defaultValue={editorDefaultValue}
-            onChange={(value) => setEditorContent(value || '')}
+            value={editorContent} // Use 'value' instead of 'defaultValue' for controlled component
+            onChange={handleEditorChange}
             options={{ minimap: { enabled: false } }}
         />
       )
-  }
+  };
 
-  // Render the right panel based on project type
   const renderRightPanel = () => {
     if (isHardwareProject) {
         return (
@@ -285,7 +380,7 @@ function EditorPage() {
               root.innerHTML = '<div style="color: red;"><h3>Error</h3><pre>' + err.message + '</pre></div>';
               console.error(err);
             }
-       t    </script>
+          </script>
         </body>
       </html>
     `;
@@ -296,7 +391,6 @@ function EditorPage() {
             <TabsTrigger value="preview">Preview</TabsTrigger>
             <TabsTrigger value="ai-assistant">AI Assistant</TabsTrigger>
           </TabsList>
-          {/* Live Preview Tab */}
           <TabsContent value="preview" className="flex-grow flex flex-col">
             <div className="flex items-center justify-end p-2 border-b">
               <Select defaultValue="desktop">
@@ -314,9 +408,7 @@ function EditorPage() {
               <iframe srcDoc={previewHtml} title="Live Preview" className="w-full h-full bg-white border rounded-md shadow-inner" sandbox="allow-scripts" />
             </div>
           </TabsContent>
-          {/* AI Assistant Tab */}
           <TabsContent value="ai-assistant" className="flex-grow flex flex-col">
-            {/* Model Selection */}
             <div className="p-4 border-b">
               <div className="flex items-center gap-4">
                 <div className="flex-1">
@@ -328,8 +420,8 @@ function EditorPage() {
                     <SelectContent className="z-[100]">
                       {availableModels.length > 0 ? (
                         availableModels.map((modelOption: any) => (
-                          <SelectItem 
-                            key={modelOption.id} 
+                          <SelectItem
+                            key={modelOption.id}
                             value={modelOption.id}
                             disabled={!isModelAvailable(modelOption.id)}
                           >
@@ -375,7 +467,7 @@ function EditorPage() {
           </TabsContent>
         </Tabs>
     );
-  }
+  };
 
   return (
     <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border">
