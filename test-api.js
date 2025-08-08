@@ -1,11 +1,12 @@
 // Simple test to verify our API endpoints work
 const express = require('express');
 const cors = require('cors');
-
+const helmet = require('helmet');
 const app = express();
 const port = 3002; // Different port to avoid conflicts
 
 // Middleware
+app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
