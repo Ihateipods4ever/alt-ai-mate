@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { Pool } from 'pg';
-
+import helmet from 'helmet';
 const app = express();
 const port = 3001;
 
@@ -25,6 +25,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.use(cors());
 // Parse JSON bodies for API requests
 app.use(express.json());
+app.use(helmet());
 
 // --- API Routes ---
 
