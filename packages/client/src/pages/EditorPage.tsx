@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useApp } from '@/contexts/AppContext';
 import Editor from "@monaco-editor/react";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Bot, Loader2, AlertCircle, Download, FileText, Folder, HardDrive, Cpu, MemoryStick, SendHorizontal } from 'lucide-react';
+import { Bot, Loader2, AlertCircle, Download, FileText, Folder, HardDrive, Cpu, MemoryStick, SendHorizontal, Mic, MicOff } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -141,10 +142,11 @@ interface FileState {
 
 function EditorPage() {
   const location = useLocation();
+  const { currentProject, updateProjectFiles } = useApp();
   const { projectType = 'web', generatedCode } = location.state || {};
   const isHardwareProject = projectType === 'hardware';
 
-  const initialFiles: FileState = {
+  const initialFiles: FileState = currentProject?.files || {
     'src/App.tsx': {
         content: generatedCode || `// Welcome to ALT-AI-MATE Editor\n// Select a file to start editing.\nfunction App() {\n  return <h1>Hello, World!</h1>\n}`
     },
@@ -173,6 +175,8 @@ function EditorPage() {
     openai: '',
     anthropic: ''
   });
+  const [isListening, setIsListening] = useState(false);
+  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
 
   // Handle file selection and update editor content
   const handleFileSelect = (path: string) => {
@@ -186,6 +190,11 @@ function EditorPage() {
     if (activeFile && value !== undefined) {
       updatedFiles[activeFile].content = value;
       setFiles(updatedFiles);
+      
+      // Save to context if we have a current project
+      if (currentProject) {
+        updateProjectFiles(currentProject.id, updatedFiles);
+      }
     }
     setEditorContent(value || '');
   };
@@ -213,6 +222,31 @@ function EditorPage() {
     };
 
     fetchModels();
+
+    // Initialize speech recognition
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+      
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setInput(transcript);
+        setIsListening(false);
+      };
+      
+      recognition.onerror = () => {
+        setIsListening(false);
+      };
+      
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+      
+      setRecognition(recognition);
+    }
   }, []);
 
   const getModelProvider = (modelId: string) => {
@@ -272,6 +306,35 @@ function EditorPage() {
     }
   };
 
+  const handleVoiceInput = () => {
+    if (!recognition) return;
+    
+    if (isListening) {
+      recognition.stop();
+      setIsListening(false);
+    } else {
+      recognition.start();
+      setIsListening(true);
+    }
+  };
+
+  const handleDownloadFiles = async () => {
+    const zip = new JSZip();
+    
+    // Add all files to the zip
+    Object.entries(files).forEach(([path, file]) => {
+      zip.file(path, file.content);
+    });
+    
+    // Generate and download the zip file
+    try {
+      const content = await zip.generateAsync({ type: 'blob' });
+      saveAs(content, `${projectType || 'project'}-files.zip`);
+    } catch (error) {
+      console.error('Error creating zip file:', error);
+    }
+  };
+
   const hardwareComponents = [
       { name: 'Arduino Uno', icon: Cpu },
       { name: 'Raspberry Pi 4', icon: Cpu },
@@ -305,7 +368,13 @@ function EditorPage() {
     }
     return (
       <div className="p-4">
-        <h3 className="text-lg font-semibold mb-4">File Explorer</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">File Explorer</h3>
+          <Button size="sm" onClick={handleDownloadFiles} className="flex items-center gap-2">
+            <Download className="h-4 w-4" />
+            Download
+          </Button>
+        </div>
         <ul className="space-y-1">
             {fileTree.map((item) => (
                 <FileTreeItem
@@ -368,26 +437,67 @@ function EditorPage() {
         )
     }
 
+    const cssContent = files['src/index.css']?.content || '';
+    const jsContent = editorContent || files['src/App.tsx']?.content || '';
+    
     const previewHtml = `
+      <!DOCTYPE html>
       <html>
         <head>
-          <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-          <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Preview</title>
+          <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+          <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
           <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-          <style> body { font-family: sans-serif; margin: 0; } #root { padding: 1rem; } </style>
+          <style>
+            body { 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; 
+              margin: 0; 
+              padding: 0;
+              background: white;
+            } 
+            #root { 
+              min-height: 100vh;
+              padding: 1rem; 
+            }
+            ${cssContent}
+          </style>
         </head>
         <body>
-          <div id="root"></div>
+          <div id="root">Loading...</div>
           <script type="text/babel">
             try {
-              ${editorContent}
+              // Add React import if not present
+              let code = \`${jsContent.replace(/`/g, '\\`')}\`;
+              if (!code.includes('import React') && !code.includes('const React')) {
+                code = 'const React = window.React;\\n' + code;
+              }
+              
+              // Execute the code
+              eval(Babel.transform(code, { presets: ['react'] }).code);
+              
+              // Render the App component
               const container = document.getElementById('root');
-              const root = ReactDOM.createRoot(container);
-              root.render(<App />);
+              if (typeof App !== 'undefined') {
+                const root = ReactDOM.createRoot(container);
+                root.render(React.createElement(App));
+              } else {
+                container.innerHTML = '<div style="color: orange; padding: 20px;"><h3>No App component found</h3><p>Make sure your code exports a default App component.</p></div>';
+              }
             } catch (err) {
+              console.error('Preview error:', err);
               const root = document.getElementById('root');
-              root.innerHTML = '<div style="color: red;"><h3>Error</h3><pre>' + err.message + '</pre></div>';
-              console.error(err);
+              root.innerHTML = \`
+                <div style="color: red; padding: 20px; font-family: monospace;">
+                  <h3>Preview Error</h3>
+                  <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow: auto;">\${err.message}</pre>
+                  <details style="margin-top: 10px;">
+                    <summary>Stack Trace</summary>
+                    <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow: auto; font-size: 12px;">\${err.stack || 'No stack trace available'}</pre>
+                  </details>
+                </div>
+              \`;
             }
           </script>
         </body>
@@ -457,7 +567,7 @@ function EditorPage() {
                 </div>
               </div>
             </div>
-            <div className="flex-grow p-4 space-y-4 overflow-y-auto">
+            <div className="flex-grow p-4 space-y-4 overflow-y-auto max-h-96" style={{ scrollbarWidth: 'thin' }}>
                 {messages.map((msg, index) => (
                     <div key={index} className={cn("flex items-start gap-3", msg.from === 'user' && "justify-end")}>
                         {msg.from === 'ai' && <Avatar className="h-8 w-8"><AvatarFallback><Bot/></AvatarFallback></Avatar>}
@@ -469,6 +579,15 @@ function EditorPage() {
             </div>
             <div className="p-2 border-t flex items-center gap-2">
                 <Input placeholder="Ask for help..." value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendMessage()} disabled={isAiLoading}/>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={handleVoiceInput} 
+                  disabled={!recognition}
+                  className={cn(isListening && "bg-red-100 border-red-300")}
+                >
+                  {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </Button>
                 <Button onClick={handleSendMessage} disabled={isAiLoading}>
                   {isAiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-4 w-4"/>}
                 </Button>

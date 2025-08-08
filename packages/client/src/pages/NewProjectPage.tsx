@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useApp } from '@/contexts/AppContext';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Settings, AlertCircle } from 'lucide-react';
+import { Loader2, Settings, AlertCircle, Wand2, Mic, MicOff } from 'lucide-react';
+import { cn } from "@/lib/utils";
 
 // Use Vite's env variable for the API URL, with a fallback for local development.
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -18,6 +20,7 @@ const INTERNAL_API_KEY = import.meta.env.VITE_INTERNAL_API_KEY;
  */
 function NewProjectPage() {
     const navigate = useNavigate();
+    const { createProject } = useApp();
     const [projectName, setProjectName] = useState('');
     const [projectType, setProjectType] = useState('web');
     const [prompt, setPrompt] = useState('');
@@ -30,6 +33,9 @@ function NewProjectPage() {
         openai: '',
         anthropic: ''
     });
+    const [isEnhancing, setIsEnhancing] = useState(false);
+    const [isListening, setIsListening] = useState(false);
+    const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
 
     // Load API keys and available models on component mount
     useEffect(() => {
@@ -57,6 +63,31 @@ function NewProjectPage() {
         };
 
         fetchModels();
+
+        // Initialize speech recognition
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+            
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                setPrompt(transcript);
+                setIsListening(false);
+            };
+            
+            recognition.onerror = () => {
+                setIsListening(false);
+            };
+            
+            recognition.onend = () => {
+                setIsListening(false);
+            };
+            
+            setRecognition(recognition);
+        }
     }, []);
 
     const getModelProvider = (modelId: string) => {
@@ -110,6 +141,15 @@ function NewProjectPage() {
 
             const data = await response.json();
             
+            // Create project in context
+            const projectFiles = {
+                'src/App.tsx': { content: data.code },
+                'src/index.css': { content: 'body { font-family: sans-serif; margin: 0; padding: 20px; }' },
+                'package.json': { content: JSON.stringify({ name: projectName, version: '0.1.0' }, null, 2) }
+            };
+            
+            createProject(projectName, projectType, projectFiles);
+            
             // Navigate to the editor page with the generated code and project type in the state.
             navigate('/app/editor', {
                 state: {
@@ -122,6 +162,63 @@ function NewProjectPage() {
             setError(err.message);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleEnhancePrompt = async () => {
+        if (!prompt.trim()) {
+            setError('Please provide a prompt to enhance.');
+            return;
+        }
+
+        if (!isModelAvailable(model)) {
+            const provider = getModelProvider(model);
+            setError(`Please configure your ${provider.charAt(0).toUpperCase() + provider.slice(1)} API key in Settings before using this model.`);
+            return;
+        }
+
+        setIsEnhancing(true);
+        setError('');
+
+        try {
+            const response = await fetch(`${API_URL}/api/enhance-prompt`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-internal-api-key': INTERNAL_API_KEY,
+                },
+                body: JSON.stringify({ 
+                    prompt, 
+                    projectType,
+                    model,
+                    apiKeys 
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'An unknown error occurred.');
+            }
+
+            const data = await response.json();
+            setPrompt(data.enhancedPrompt);
+
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsEnhancing(false);
+        }
+    };
+
+    const handleVoiceInput = () => {
+        if (!recognition) return;
+        
+        if (isListening) {
+            recognition.stop();
+            setIsListening(false);
+        } else {
+            recognition.start();
+            setIsListening(true);
         }
     };
 
@@ -148,6 +245,20 @@ function NewProjectPage() {
                                 <SelectItem value="mobile">Mobile Application</SelectItem>
                                 <SelectItem value="desktop">Desktop Application</SelectItem>
                                 <SelectItem value="hardware">Hardware/IoT</SelectItem>
+                                <SelectItem value="game">Game Development</SelectItem>
+                                <SelectItem value="social">Social Media Platform</SelectItem>
+                                <SelectItem value="ecommerce">E-commerce Store</SelectItem>
+                                <SelectItem value="api">REST API/Backend</SelectItem>
+                                <SelectItem value="blockchain">Blockchain/Web3</SelectItem>
+                                <SelectItem value="ai">AI/Machine Learning</SelectItem>
+                                <SelectItem value="chrome-extension">Chrome Extension</SelectItem>
+                                <SelectItem value="chatbot">Chatbot/Virtual Assistant</SelectItem>
+                                <SelectItem value="dashboard">Analytics Dashboard</SelectItem>
+                                <SelectItem value="cms">Content Management System</SelectItem>
+                                <SelectItem value="portfolio">Portfolio Website</SelectItem>
+                                <SelectItem value="blog">Blog/News Site</SelectItem>
+                                <SelectItem value="landing">Landing Page</SelectItem>
+                                <SelectItem value="saas">SaaS Application</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -198,7 +309,29 @@ function NewProjectPage() {
                     )}
                 </div>
                 <div className="grid gap-2">
-                    <Label htmlFor="prompt">AI Prompt</Label>
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="prompt">AI Prompt</Label>
+                        <div className="flex gap-2">
+                            <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={handleVoiceInput} 
+                                disabled={!recognition}
+                                className={cn(isListening && "bg-red-100 border-red-300")}
+                            >
+                                {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                            </Button>
+                            <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={handleEnhancePrompt} 
+                                disabled={isEnhancing || !prompt.trim()}
+                            >
+                                {isEnhancing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                                Enhance
+                            </Button>
+                        </div>
+                    </div>
                     <Textarea id="prompt" placeholder="e.g., 'A simple to-do list app with a clean interface'" rows={4} value={prompt} onChange={e => setPrompt(e.target.value)} />
                 </div>
                 {error && <p className="text-sm text-destructive">{error}</p>}

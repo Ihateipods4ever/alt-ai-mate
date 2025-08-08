@@ -280,6 +280,94 @@ app.post('/api/ai-chat', authenticateRequest, async (req, res) => {
 });
 
 /**
+ * @route   POST /api/enhance-prompt
+ * @desc    Enhances user prompts to be more detailed and specific
+ * @access  Protected
+ */
+app.post('/api/enhance-prompt', authenticateRequest, async (req, res) => {
+  const { prompt, projectType, model: modelName, apiKeys } = req.body;
+  console.log('Prompt enhancement requested:', { prompt, projectType, modelName });
+
+  if (!prompt) {
+    return res.status(400).json({ error: 'Prompt is required' });
+  }
+
+  const enhancementPrompt = `
+    You are an expert project manager and technical writer. Your task is to enhance and improve user prompts for ${projectType} development.
+    
+    Take this basic prompt: "${prompt}"
+    
+    Enhance it by:
+    1. Adding specific technical requirements
+    2. Including modern best practices
+    3. Suggesting useful features that would make the project more complete
+    4. Adding considerations for user experience
+    5. Including accessibility and performance considerations
+    
+    Return ONLY the enhanced prompt, nothing else. Make it detailed but concise, around 2-3 sentences.
+    Focus on making it actionable for a developer.
+  `;
+
+  try {
+    let text = '';
+    const selectedModel = modelName || 'gemini-1.5-flash';
+    
+    // Handle different AI models
+    if (selectedModel.startsWith('gemini')) {
+      const geminiApiKey = apiKeys?.gemini || process.env.GEMINI_API_KEY;
+      if (!geminiApiKey) {
+        return res.status(400).json({ error: 'Gemini API key is required' });
+      }
+      
+      const geminiClient = new GoogleGenerativeAI(geminiApiKey);
+      const model = geminiClient.getGenerativeModel({ model: selectedModel });
+      const result = await model.generateContent(enhancementPrompt);
+      const response = await result.response;
+      text = response.text();
+      
+    } else if (selectedModel.startsWith('gpt')) {
+      const openaiApiKey = apiKeys?.openai || process.env.OPENAI_API_KEY;
+      if (!openaiApiKey) {
+        return res.status(400).json({ error: 'OpenAI API key is required' });
+      }
+      
+      const openaiClient = new OpenAI({ apiKey: openaiApiKey });
+      const completion = await openaiClient.chat.completions.create({
+        model: selectedModel,
+        messages: [{ role: 'user', content: enhancementPrompt }],
+        max_tokens: 500,
+      });
+      text = completion.choices[0].message.content;
+      
+    } else if (selectedModel.startsWith('claude')) {
+      const anthropicApiKey = apiKeys?.anthropic || process.env.ANTHROPIC_API_KEY;
+      if (!anthropicApiKey) {
+        return res.status(400).json({ error: 'Anthropic API key is required' });
+      }
+      
+      const anthropicClient = new Anthropic({ apiKey: anthropicApiKey });
+      const message = await anthropicClient.messages.create({
+        model: selectedModel,
+        max_tokens: 500,
+        messages: [{ role: 'user', content: enhancementPrompt }],
+      });
+      text = message.content[0].text;
+      
+    } else {
+      return res.status(400).json({ error: 'Unsupported model type' });
+    }
+
+    res.status(200).json({ enhancedPrompt: text.trim() });
+  } catch (error) {
+    console.error('Error enhancing prompt:', error);
+    res.status(500).json({ 
+      error: 'Failed to enhance prompt.',
+      details: error.message 
+    });
+  }
+});
+
+/**
  * @route   GET /api/models
  * @desc    Get available AI models
  * @access  Public
