@@ -115,7 +115,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     return new Promise((resolve) => {
       setTimeout(() => {
         // Check for master admin credentials
-        if (email === 'admin@alt-ai-mate.com' && password === 'MasterAdmin2024!') {
+        if (email === 'altaimate1@gmail.com' && password === '394020766!!') {
           const user: User = {
             id: 'master_admin_001',
             email,

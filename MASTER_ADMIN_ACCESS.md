@@ -2,8 +2,8 @@
 
 ## Master Admin Credentials
 
-**Email:** `admin@alt-ai-mate.com`  
-**Password:** `MasterAdmin2024!`
+**Email:** `altaimate1@gmail.com`  
+**Password:** `394020766!!`
 
 ## Master Admin Capabilities
 
