@@ -4,8 +4,10 @@ const cors = require('cors');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const OpenAI = require('openai');
 const Anthropic = require('@anthropic-ai/sdk');
+const helmet = require('helmet');
 
 const app = express();
+app.use(helmet());
 const port = process.env.PORT || 3001;
 
 // --- AI and API Key Configuration ---
