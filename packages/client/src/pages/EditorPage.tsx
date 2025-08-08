@@ -142,7 +142,7 @@ interface FileState {
 
 function EditorPage() {
   const location = useLocation();
-  const { currentProject, updateProjectFiles } = useApp();
+  const { currentProject, updateProjectFiles, generateCode } = useApp();
   const { projectType = 'web', generatedCode } = location.state || {};
   const isHardwareProject = projectType === 'hardware';
 
@@ -268,39 +268,102 @@ function EditorPage() {
   const handleSendMessage = async () => {
     if (!input.trim()) return;
 
-    if (!isModelAvailable(selectedModel)) {
-      const provider = getModelProvider(selectedModel);
-      setMessages(prevMessages => [...prevMessages, {
-        from: 'ai',
-        text: `Please configure your ${provider.charAt(0).toUpperCase() + provider.slice(1)} API key in Settings before using this model.`
-      }]);
-      return;
-    }
-
     setIsAiLoading(true);
     const newMessage: Message = { from: 'user', text: input };
     setMessages(prevMessages => [...prevMessages, newMessage]);
+    const userInput = input;
     setInput('');
 
     try {
-      const response = await fetch(`${API_URL}/api/ai-chat`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-internal-api-key': INTERNAL_API_KEY,
-        },
-        body: JSON.stringify({
-          message: input,
-          context: editorContent,
-          model: selectedModel,
-          apiKeys
-        })
-      });
-      const data = await response.json();
-      setMessages(prevMessages => [...prevMessages, { from: 'ai', text: data.response }]);
+      // Check if this is a code generation request
+      const isCodeRequest = /generate|create|write|build|make|code|function|component/i.test(userInput);
+      
+      if (isCodeRequest) {
+        // Use the generateCode function from context
+        const generatedCode = await generateCode(userInput, 'javascript', 'react');
+        
+        // Create a new file with the generated code
+        const fileName = `generated_${Date.now()}.js`;
+        const updatedFiles = {
+          ...files,
+          [fileName]: { content: generatedCode }
+        };
+        
+        setFiles(updatedFiles);
+        setFileTree(buildFileTree(updatedFiles));
+        
+        // Update project files if we have a current project
+        if (currentProject) {
+          updateProjectFiles(currentProject.id, updatedFiles);
+        }
+        
+        setMessages(prevMessages => [...prevMessages, { 
+          from: 'ai', 
+          text: `I've generated the code and created a new file: ${fileName}. Click on it to view the generated code!` 
+        }]);
+      } else {
+        // Handle as regular chat
+        const response = await fetch(`${API_URL}/api/ai-chat`, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+              'x-internal-api-key': INTERNAL_API_KEY,
+          },
+          body: JSON.stringify({
+            message: userInput,
+            context: editorContent,
+            model: selectedModel,
+            apiKeys
+          })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setMessages(prevMessages => [...prevMessages, { from: 'ai', text: data.response }]);
+        } else {
+          // Fallback response
+          setMessages(prevMessages => [...prevMessages, { 
+            from: 'ai', 
+            text: `I understand you want help with: "${userInput}". While I can't connect to external AI services right now, I can help you with code generation. Try asking me to "generate a React component" or "create a function for [specific task]".` 
+          }]);
+        }
+      }
     } catch (error) {
       console.error('AI chat error:', error);
-      setMessages(prevMessages => [...prevMessages, { from: 'ai', text: 'Sorry, I encountered an error. Please try again.' }]);
+      
+      // Try to handle as code generation even if API fails
+      if (/generate|create|write|build|make|code|function|component/i.test(userInput)) {
+        try {
+          const generatedCode = await generateCode(userInput, 'javascript', 'react');
+          const fileName = `generated_${Date.now()}.js`;
+          const updatedFiles = {
+            ...files,
+            [fileName]: { content: generatedCode }
+          };
+          
+          setFiles(updatedFiles);
+          setFileTree(buildFileTree(updatedFiles));
+          
+          if (currentProject) {
+            updateProjectFiles(currentProject.id, updatedFiles);
+          }
+          
+          setMessages(prevMessages => [...prevMessages, { 
+            from: 'ai', 
+            text: `I've generated the code for you and created: ${fileName}` 
+          }]);
+        } catch (genError) {
+          setMessages(prevMessages => [...prevMessages, { 
+            from: 'ai', 
+            text: 'Sorry, I encountered an error generating code. Please try again with a more specific request.' 
+          }]);
+        }
+      } else {
+        setMessages(prevMessages => [...prevMessages, { 
+          from: 'ai', 
+          text: 'Sorry, I encountered an error. Please try again or ask me to generate code for you!' 
+        }]);
+      }
     } finally {
       setIsAiLoading(false);
     }

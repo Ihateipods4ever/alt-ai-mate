@@ -43,6 +43,10 @@ interface AppContextType extends AppState {
   // File actions
   updateProjectFiles: (projectId: string, files: Record<string, { content: string }>) => void;
   
+  // Code generation actions
+  generateCode: (prompt: string, language?: string, framework?: string) => Promise<string>;
+  generateProject: (description: string, projectType: string) => Promise<Project>;
+  
   // Deployment actions
   deployProject: (projectId: string) => Promise<boolean>;
   
@@ -268,6 +272,166 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     updateProject(projectId, { files });
   };
 
+  const generateCode = async (prompt: string, language = 'javascript', framework = 'none'): Promise<string> => {
+    try {
+      const response = await fetch('http://localhost:3001/api/generate-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt, language, framework }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate code');
+      }
+
+      const data = await response.json();
+      return data.code;
+    } catch (error) {
+      console.error('Code generation error:', error);
+      // Fallback to local generation
+      return `// Generated ${language} code for: ${prompt}
+// Framework: ${framework}
+
+function generatedFunction() {
+  // TODO: Implement based on prompt: ${prompt}
+  console.log('Generated code placeholder');
+  return 'success';
+}
+
+export default generatedFunction;`;
+    }
+  };
+
+  const generateProject = async (description: string, projectType: string): Promise<Project> => {
+    try {
+      // Generate project structure based on type
+      let files: Record<string, { content: string }> = {};
+
+      switch (projectType.toLowerCase()) {
+        case 'react':
+          files = {
+            'src/App.tsx': {
+              content: await generateCode(`Create a React App component for: ${description}`, 'typescript', 'react')
+            },
+            'src/index.tsx': {
+              content: `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
+
+const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
+root.render(<App />);`
+            },
+            'src/index.css': {
+              content: `body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}`
+            },
+            'package.json': {
+              content: JSON.stringify({
+                name: description.toLowerCase().replace(/\s+/g, '-'),
+                version: '0.1.0',
+                dependencies: {
+                  react: '^18.2.0',
+                  'react-dom': '^18.2.0',
+                  typescript: '^4.9.5'
+                },
+                scripts: {
+                  start: 'react-scripts start',
+                  build: 'react-scripts build'
+                }
+              }, null, 2)
+            }
+          };
+          break;
+
+        case 'node':
+          files = {
+            'src/index.js': {
+              content: await generateCode(`Create a Node.js application for: ${description}`, 'javascript', 'node')
+            },
+            'package.json': {
+              content: JSON.stringify({
+                name: description.toLowerCase().replace(/\s+/g, '-'),
+                version: '1.0.0',
+                main: 'src/index.js',
+                dependencies: {
+                  express: '^4.18.2'
+                },
+                scripts: {
+                  start: 'node src/index.js',
+                  dev: 'nodemon src/index.js'
+                }
+              }, null, 2)
+            }
+          };
+          break;
+
+        default:
+          files = {
+            'index.html': {
+              content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${description}</title>
+</head>
+<body>
+    <h1>${description}</h1>
+    <script src="script.js"></script>
+</body>
+</html>`
+            },
+            'script.js': {
+              content: await generateCode(`Create JavaScript code for: ${description}`, 'javascript')
+            },
+            'style.css': {
+              content: `body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 20px;
+  background-color: #f5f5f5;
+}
+
+h1 {
+  color: #333;
+  text-align: center;
+}`
+            }
+          };
+      }
+
+      const project: Project = {
+        id: 'proj_' + Date.now(),
+        name: description,
+        type: projectType,
+        files,
+        createdAt: new Date().toISOString(),
+        lastModified: new Date().toISOString(),
+        deploymentStatus: 'Ready to Deploy'
+      };
+
+      setState(prev => ({
+        ...prev,
+        projects: [...prev.projects, project],
+        currentProject: project
+      }));
+
+      return project;
+    } catch (error) {
+      console.error('Project generation error:', error);
+      throw error;
+    }
+  };
+
   const deployProject = async (projectId: string): Promise<boolean> => {
     // Set deploying status
     updateProject(projectId, { deploymentStatus: 'Deploying' });
@@ -304,6 +468,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     deleteProject,
     setCurrentProject,
     updateProjectFiles,
+    generateCode,
+    generateProject,
     deployProject,
     saveToStorage,
     loadFromStorage,

@@ -20,7 +20,7 @@ const INTERNAL_API_KEY = import.meta.env.VITE_INTERNAL_API_KEY;
  */
 function NewProjectPage() {
     const navigate = useNavigate();
-    const { createProject } = useApp();
+    const { createProject, generateProject } = useApp();
     const [projectName, setProjectName] = useState('');
     const [projectType, setProjectType] = useState('web');
     const [prompt, setPrompt] = useState('');
@@ -108,58 +108,23 @@ function NewProjectPage() {
             return;
         }
 
-        // Check if the selected model has an API key configured
-        if (!isModelAvailable(model)) {
-            const provider = getModelProvider(model);
-            setError(`Please configure your ${provider.charAt(0).toUpperCase() + provider.slice(1)} API key in Settings before using this model.`);
-            return;
-        }
-
         setIsLoading(true);
         setError('');
 
         try {
-            const response = await fetch(`${API_URL}/api/generate-code`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'x-internal-api-key': INTERNAL_API_KEY,
-                },
-                body: JSON.stringify({ 
-                    prompt, 
-                    projectType, 
-                    name: projectName, 
-                    model,
-                    apiKeys 
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'An unknown error occurred.');
-            }
-
-            const data = await response.json();
+            // Use the new generateProject function from context
+            const project = await generateProject(`${projectName}: ${prompt}`, projectType);
             
-            // Create project in context
-            const projectFiles = {
-                'src/App.tsx': { content: data.code },
-                'src/index.css': { content: 'body { font-family: sans-serif; margin: 0; padding: 20px; }' },
-                'package.json': { content: JSON.stringify({ name: projectName, version: '0.1.0' }, null, 2) }
-            };
-            
-            createProject(projectName, projectType, projectFiles);
-            
-            // Navigate to the editor page with the generated code and project type in the state.
+            // Navigate to the editor page with the generated project
             navigate('/app/editor', {
                 state: {
-                    generatedCode: data.code,
+                    projectId: project.id,
                     projectType: projectType,
                 }
             });
 
         } catch (err: any) {
-            setError(err.message);
+            setError(err.message || 'Failed to generate project');
         } finally {
             setIsLoading(false);
         }
