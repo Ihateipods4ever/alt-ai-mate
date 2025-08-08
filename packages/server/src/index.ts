@@ -161,6 +161,60 @@ app.get('/api/models', (req: Request, res: Response) => {
     res.status(200).json({ models });
 });
 
+/**
+ * @route   POST /api/ai-chat
+ * @desc    Handle AI chat conversations
+ * @access  Public
+ */
+app.post('/api/ai-chat', async (req: Request, res: Response) => {
+    const { message, context, model } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ error: 'Missing message' });
+    }
+
+    try {
+      // For now, provide helpful responses about code
+      let response = '';
+      
+      if (message.toLowerCase().includes('error') || message.toLowerCase().includes('bug')) {
+        response = `I can help you debug that! Looking at your code context, here are some common solutions:
+
+1. Check for syntax errors (missing semicolons, brackets)
+2. Verify variable names and imports
+3. Make sure all dependencies are installed
+4. Check the browser console for detailed error messages
+
+Can you share the specific error message you're seeing?`;
+      } else if (message.toLowerCase().includes('optimize') || message.toLowerCase().includes('improve')) {
+        response = `Here are some ways to optimize your code:
+
+1. Use React.memo() for components that don't need frequent re-renders
+2. Implement proper error boundaries
+3. Use TypeScript for better type safety
+4. Consider code splitting for larger applications
+5. Optimize bundle size with tree shaking
+
+What specific aspect would you like to optimize?`;
+      } else {
+        response = `I understand you're asking about: "${message}"
+
+I can help you with:
+- Code generation and debugging
+- React/TypeScript best practices  
+- Performance optimization
+- Architecture suggestions
+
+Try asking me to "generate a component" or "help debug this error" for more specific assistance!`;
+      }
+
+      res.status(200).json({ response });
+    } catch (err) {
+      console.error('Error in AI chat:', err);
+      res.status(500).json({ error: 'AI chat failed' });
+    }
+});
+
 
 // --- Server Initialization ---
 app.listen(port, () => {
