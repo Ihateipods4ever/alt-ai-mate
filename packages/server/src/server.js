@@ -1,8 +1,10 @@
 // Compiled from TypeScript - Full Express server
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 
 const app = express();
+app.use(helmet());
 const port = 3001;
 
 // --- Middleware ---
