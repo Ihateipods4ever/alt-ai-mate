@@ -8,6 +8,8 @@ interface Project {
   files: Record<string, { content: string }>;
   createdAt: string;
   lastModified: string;
+  deploymentStatus: 'Not Deployed' | 'Ready to Deploy' | 'Deploying' | 'Deployed' | 'Error';
+  deploymentUrl?: string;
 }
 
 interface User {
@@ -40,6 +42,9 @@ interface AppContextType extends AppState {
   
   // File actions
   updateProjectFiles: (projectId: string, files: Record<string, { content: string }>) => void;
+  
+  // Deployment actions
+  deployProject: (projectId: string) => Promise<boolean>;
   
   // Admin actions
   hasPermission: (permission: string) => boolean;
@@ -222,7 +227,8 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         }
       },
       createdAt: new Date().toISOString(),
-      lastModified: new Date().toISOString()
+      lastModified: new Date().toISOString(),
+      deploymentStatus: 'Ready to Deploy'
     };
 
     setState(prev => ({
@@ -262,6 +268,32 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     updateProject(projectId, { files });
   };
 
+  const deployProject = async (projectId: string): Promise<boolean> => {
+    // Set deploying status
+    updateProject(projectId, { deploymentStatus: 'Deploying' });
+    
+    try {
+      // Simulate deployment process
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Generate a mock deployment URL
+      const project = state.projects.find(p => p.id === projectId);
+      const deploymentUrl = `${project?.name.toLowerCase().replace(/\s+/g, '-')}-${projectId.slice(-4)}.netlify.app`;
+      
+      // Update to deployed status
+      updateProject(projectId, { 
+        deploymentStatus: 'Deployed',
+        deploymentUrl 
+      });
+      
+      return true;
+    } catch (error) {
+      // Update to error status
+      updateProject(projectId, { deploymentStatus: 'Error' });
+      return false;
+    }
+  };
+
   const contextValue: AppContextType = {
     ...state,
     login,
@@ -272,6 +304,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     deleteProject,
     setCurrentProject,
     updateProjectFiles,
+    deployProject,
     saveToStorage,
     loadFromStorage,
     hasPermission,

@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Bot, Loader2, AlertCircle, Download, FileText, Folder, HardDrive, Cpu, MemoryStick, SendHorizontal, Mic, MicOff } from 'lucide-react';
+import { Bot, Loader2, AlertCircle, Download, FileText, Folder, HardDrive, Cpu, MemoryStick, SendHorizontal, Mic, MicOff, CloudUpload } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -370,10 +370,12 @@ function EditorPage() {
       <div className="p-4">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">File Explorer</h3>
-          <Button size="sm" onClick={handleDownloadFiles} className="flex items-center gap-2">
-            <Download className="h-4 w-4" />
-            Download
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleDownloadFiles} className="flex items-center gap-2">
+              <Download className="h-4 w-4" />
+              Download
+            </Button>
+          </div>
         </div>
         <ul className="space-y-1">
             {fileTree.map((item) => (
