@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# Exit immediately if a command exits with a non-zero status.
+set -e
+
+if [ -z "$1" ]; then
+  echo "❌ Error: Please provide a commit message."
+  echo "Usage: ./deploy-updates.sh \"Your commit message\""
+  exit 1
+fi
+
 echo "🚀 Deploying ALT-AI-MATE Updates"
 echo "================================"
 
@@ -16,19 +25,7 @@ git add .
 
 # Commit changes
 echo "💾 Committing changes..."
-git commit -m "feat: Add comprehensive functionality updates
-
-- Enhanced project types (games, social media, etc.)
-- Functional servers management page
-- IP Guard application system
-- Complete billing and subscription management
-- User authentication and context management
-- Protected routes and state persistence
-- Enhanced dashboard with real project data
-- Improved editor with better preview
-- Server API enhancements
-
-All features now fully functional and integrated."
+git commit -m "$1"
 
 # Check if remote exists
 if ! git remote get-url origin >/dev/null 2>&1; then

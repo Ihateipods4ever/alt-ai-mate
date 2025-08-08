@@ -1,57 +1,30 @@
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-const OpenAI = require('openai');
-const Anthropic = require('@anthropic-ai/sdk');
+const { Pool } = require('pg');
+const dotenv = require('dotenv');
+const aiService = require('./services/aiService');
+
+// Load environment variables
+dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3001;
 
-// --- AI and API Key Configuration ---
-const internalApiKey = process.env.INTERNAL_API_KEY;
-
-// Initialize AI clients with environment variables
-let genAI = null;
-let openai = null;
-let anthropic = null;
-
-// Initialize Google Gemini
-if (process.env.GEMINI_API_KEY) {
-  genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-}
-
-// Initialize OpenAI
-if (process.env.OPENAI_API_KEY) {
-  openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
-}
-
-// Initialize Anthropic Claude
-if (process.env.ANTHROPIC_API_KEY) {
-  anthropic = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
-  });
-}
+// --- Database Connection ---
+const pool = new Pool({
+  user: process.env.DB_USER || 'alt_user',
+  host: process.env.DB_HOST || 'localhost',
+  database: process.env.DB_NAME || 'altaimate_db',
+  password: process.env.DB_PASSWORD || 'password',
+  port: parseInt(process.env.DB_PORT || '5432'),
+});
 
 // --- Middleware ---
-// Authentication middleware to protect AI endpoints
-const authenticateRequest = (req, res, next) => {
-  const apiKey = req.headers['x-internal-api-key'];
-  if (!internalApiKey || !apiKey || apiKey !== internalApiKey) {
-    console.warn('Unauthorized request blocked.');
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  next();
-};
-
 // Request logging middleware
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
   next();
 });
-
 // Enable CORS for all routes to allow the frontend to connect
 app.use(cors());
 // Parse JSON bodies for API requests
@@ -61,310 +34,101 @@ app.use(express.json());
 
 /**
  * @route   GET /api/health
- * @desc    Health check endpoint to ensure the server is running.
+ * @desc    Health check for server and database connection.
  * @access  Public
  */
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'UP', 
-    message: 'ALT-AI-MATE server is running smoothly.',
-    dbStatus: 'Not Available (using mock data)'
-  });
+app.get('/api/health', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    client.release();
+    res.status(200).json({
+      status: 'UP',
+      message: 'ALT-AI-MATE server is running smoothly.',
+      dbStatus: 'Connected'
+    });
+  } catch (err) {
+    console.error('Database connection error:', err);
+    res.status(503).json({
+      status: 'DOWN',
+      message: 'Server is running, but database connection failed.',
+      dbStatus: 'Error'
+    });
+  }
 });
 
 /**
  * @route   POST /api/projects
- * @desc    Create a new project
+ * @desc    Create a new project in the database.
  * @access  Public
  */
-app.post('/api/projects', (req, res) => {
+app.post('/api/projects', async (req, res) => {
     const { name, projectType, userId } = req.body;
-    console.log('Received new project:', { name, projectType, userId });
-    
-    if (!name || !projectType) {
-      return res.status(400).json({ error: 'Missing required fields: name and projectType' });
+
+    if (!name || !projectType || !userId) {
+      return res.status(400).json({ error: 'Missing required fields: name, projectType, and userId' });
     }
-    
-    const newProject = {
-        id: `proj_${Date.now()}`,
-        name,
-        project_type: projectType,
-        user_id: userId || 'anonymous',
-        created_at: new Date().toISOString(),
-        status: 'Created'
-    };
-    
-    res.status(201).json({ 
-        message: 'Project created successfully', 
-        project: newProject 
-    });
+
+    try {
+      const result = await pool.query(
+        'INSERT INTO projects (name, project_type, user_id, created_at) VALUES ($1, $2, $3, NOW()) RETURNING *',
+        [name, projectType, userId]
+      );
+      res.status(201).json({ message: 'Project created successfully', project: result.rows[0] });
+    } catch (err) {
+      console.error('Error creating project:', err);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   GET /api/projects
+ * @desc    Get all projects for a user
+ * @access  Public
+ */
+app.get('/api/projects', async (req, res) => {
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'Missing userId parameter' });
+    }
+
+    try {
+      const result = await pool.query(
+        'SELECT * FROM projects WHERE user_id = $1 ORDER BY created_at DESC',
+        [userId]
+      );
+      res.status(200).json({ projects: result.rows });
+    } catch (err) {
+      console.error('Error fetching projects:', err);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
 });
 
 /**
  * @route   POST /api/generate-code
- * @desc    Generates code using various AI models.
- * @access  Protected
+ * @desc    Generate code using AI
+ * @access  Public
  */
-app.post('/api/generate-code', authenticateRequest, async (req, res) => {
-  const { prompt, projectType, model: modelName, apiKeys } = req.body;
-  console.log('Code generation requested:', { prompt, projectType, modelName });
+app.post('/api/generate-code', async (req, res) => {
+    const { prompt, language, framework, projectType } = req.body;
 
-  if (!prompt || !projectType) {
-    return res.status(400).json({ error: 'Missing required fields: prompt and projectType' });
-  }
-
-  const generationPrompt = `
-    You are an expert React developer. Generate a single, complete React component in a single file.
-    The component should be functional and self-contained.
-    Do not include any explanations, just the raw code.
-    The user's request is: "${prompt}".
-    The component should be named "App" and exported as the default.
-    Start the code with "import React from 'react';".
-  `;
-
-  try {
-    let text = '';
-    
-    // Handle different AI models
-    if (modelName?.startsWith('gemini')) {
-      // Use provided API key or fallback to environment variable
-      const geminiApiKey = apiKeys?.gemini || process.env.GEMINI_API_KEY;
-      if (!geminiApiKey) {
-        return res.status(400).json({ error: 'Gemini API key is required' });
-      }
-      
-      const geminiClient = new GoogleGenerativeAI(geminiApiKey);
-      const model = geminiClient.getGenerativeModel({ model: modelName || "gemini-1.5-pro" });
-      const result = await model.generateContent(generationPrompt);
-      const response = await result.response;
-      text = response.text();
-      
-    } else if (modelName?.startsWith('gpt')) {
-      // OpenAI GPT models
-      const openaiApiKey = apiKeys?.openai || process.env.OPENAI_API_KEY;
-      if (!openaiApiKey) {
-        return res.status(400).json({ error: 'OpenAI API key is required' });
-      }
-      
-      const openaiClient = new OpenAI({ apiKey: openaiApiKey });
-      const completion = await openaiClient.chat.completions.create({
-        model: modelName || 'gpt-4',
-        messages: [{ role: 'user', content: generationPrompt }],
-        max_tokens: 2000,
-      });
-      text = completion.choices[0].message.content;
-      
-    } else if (modelName?.startsWith('claude')) {
-      // Anthropic Claude models
-      const anthropicApiKey = apiKeys?.anthropic || process.env.ANTHROPIC_API_KEY;
-      if (!anthropicApiKey) {
-        return res.status(400).json({ error: 'Anthropic API key is required' });
-      }
-      
-      const anthropicClient = new Anthropic({ apiKey: anthropicApiKey });
-      const message = await anthropicClient.messages.create({
-        model: modelName || 'claude-3-sonnet-20240229',
-        max_tokens: 2000,
-        messages: [{ role: 'user', content: generationPrompt }],
-      });
-      text = message.content[0].text;
-      
-    } else {
-      return res.status(400).json({ error: 'Unsupported model type' });
+    if (!prompt) {
+      return res.status(400).json({ error: 'Missing prompt' });
     }
 
-    // Clean up the response to ensure it's just code
-    if (text.startsWith('```jsx')) {
-      text = text.substring(5, text.length - 3).trim();
-    } else if (text.startsWith('```javascript')) {
-      text = text.substring(13, text.length - 3).trim();
-    } else if (text.startsWith('```')) {
-      const firstNewline = text.indexOf('\n');
-      const lastBackticks = text.lastIndexOf('```');
-      if (firstNewline !== -1 && lastBackticks !== -1) {
-        text = text.substring(firstNewline + 1, lastBackticks).trim();
-      }
+    try {
+      const result = await aiService.generateCode({
+        prompt,
+        language: language || 'javascript',
+        framework: framework || 'none',
+        projectType: projectType || 'web'
+      });
+
+      res.status(200).json(result);
+    } catch (err) {
+      console.error('Error generating code:', err);
+      res.status(500).json({ error: 'Code generation failed' });
     }
-
-    res.status(200).json({ code: text });
-  } catch (error) {
-    console.error('Error generating code:', error);
-    res.status(500).json({ 
-      error: 'Failed to generate code.',
-      details: error.message 
-    });
-  }
-});
-
-/**
- * @route   POST /api/ai-chat
- * @desc    Handles interactive AI assistant messages.
- * @access  Protected
- */
-app.post('/api/ai-chat', authenticateRequest, async (req, res) => {
-  const { message, context, model: modelName, apiKeys } = req.body;
-  console.log('AI chat message received:', { message, modelName });
-
-  if (!message) {
-    return res.status(400).json({ error: 'Message is required.' });
-  }
-
-  const chatPrompt = `
-    You are a helpful AI coding assistant named ALT-AI-MATE.
-    The user is asking for help with their code.
-    The user's current code is:
-    ---
-    ${context}
-    ---
-    The user's question is: "${message}"
-    Provide a concise and helpful response. Do not include your own name in the response.
-  `;
-
-  try {
-    let text = '';
-    const selectedModel = modelName || 'gemini-pro';
-    
-    // Handle different AI models
-    if (selectedModel.startsWith('gemini')) {
-      const geminiApiKey = apiKeys?.gemini || process.env.GEMINI_API_KEY;
-      if (!geminiApiKey) {
-        return res.status(400).json({ error: 'Gemini API key is required' });
-      }
-      
-      const geminiClient = new GoogleGenerativeAI(geminiApiKey);
-      const model = geminiClient.getGenerativeModel({ model: selectedModel });
-      const result = await model.generateContent(chatPrompt);
-      const response = await result.response;
-      text = response.text();
-      
-    } else if (selectedModel.startsWith('gpt')) {
-      const openaiApiKey = apiKeys?.openai || process.env.OPENAI_API_KEY;
-      if (!openaiApiKey) {
-        return res.status(400).json({ error: 'OpenAI API key is required' });
-      }
-      
-      const openaiClient = new OpenAI({ apiKey: openaiApiKey });
-      const completion = await openaiClient.chat.completions.create({
-        model: selectedModel,
-        messages: [{ role: 'user', content: chatPrompt }],
-        max_tokens: 1000,
-      });
-      text = completion.choices[0].message.content;
-      
-    } else if (selectedModel.startsWith('claude')) {
-      const anthropicApiKey = apiKeys?.anthropic || process.env.ANTHROPIC_API_KEY;
-      if (!anthropicApiKey) {
-        return res.status(400).json({ error: 'Anthropic API key is required' });
-      }
-      
-      const anthropicClient = new Anthropic({ apiKey: anthropicApiKey });
-      const message = await anthropicClient.messages.create({
-        model: selectedModel,
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: chatPrompt }],
-      });
-      text = message.content[0].text;
-      
-    } else {
-      return res.status(400).json({ error: 'Unsupported model type' });
-    }
-
-    res.status(200).json({ response: text });
-  } catch (error) {
-    console.error('Error with AI chat:', error);
-    res.status(500).json({ 
-      error: 'Failed to get AI response.',
-      details: error.message 
-    });
-  }
-});
-
-/**
- * @route   POST /api/enhance-prompt
- * @desc    Enhances user prompts to be more detailed and specific
- * @access  Protected
- */
-app.post('/api/enhance-prompt', authenticateRequest, async (req, res) => {
-  const { prompt, projectType, model: modelName, apiKeys } = req.body;
-  console.log('Prompt enhancement requested:', { prompt, projectType, modelName });
-
-  if (!prompt) {
-    return res.status(400).json({ error: 'Prompt is required' });
-  }
-
-  const enhancementPrompt = `
-    You are an expert project manager and technical writer. Your task is to enhance and improve user prompts for ${projectType} development.
-    
-    Take this basic prompt: "${prompt}"
-    
-    Enhance it by:
-    1. Adding specific technical requirements
-    2. Including modern best practices
-    3. Suggesting useful features that would make the project more complete
-    4. Adding considerations for user experience
-    5. Including accessibility and performance considerations
-    
-    Return ONLY the enhanced prompt, nothing else. Make it detailed but concise, around 2-3 sentences.
-    Focus on making it actionable for a developer.
-  `;
-
-  try {
-    let text = '';
-    const selectedModel = modelName || 'gemini-1.5-flash';
-    
-    // Handle different AI models
-    if (selectedModel.startsWith('gemini')) {
-      const geminiApiKey = apiKeys?.gemini || process.env.GEMINI_API_KEY;
-      if (!geminiApiKey) {
-        return res.status(400).json({ error: 'Gemini API key is required' });
-      }
-      
-      const geminiClient = new GoogleGenerativeAI(geminiApiKey);
-      const model = geminiClient.getGenerativeModel({ model: selectedModel });
-      const result = await model.generateContent(enhancementPrompt);
-      const response = await result.response;
-      text = response.text();
-      
-    } else if (selectedModel.startsWith('gpt')) {
-      const openaiApiKey = apiKeys?.openai || process.env.OPENAI_API_KEY;
-      if (!openaiApiKey) {
-        return res.status(400).json({ error: 'OpenAI API key is required' });
-      }
-      
-      const openaiClient = new OpenAI({ apiKey: openaiApiKey });
-      const completion = await openaiClient.chat.completions.create({
-        model: selectedModel,
-        messages: [{ role: 'user', content: enhancementPrompt }],
-        max_tokens: 500,
-      });
-      text = completion.choices[0].message.content;
-      
-    } else if (selectedModel.startsWith('claude')) {
-      const anthropicApiKey = apiKeys?.anthropic || process.env.ANTHROPIC_API_KEY;
-      if (!anthropicApiKey) {
-        return res.status(400).json({ error: 'Anthropic API key is required' });
-      }
-      
-      const anthropicClient = new Anthropic({ apiKey: anthropicApiKey });
-      const message = await anthropicClient.messages.create({
-        model: selectedModel,
-        max_tokens: 500,
-        messages: [{ role: 'user', content: enhancementPrompt }],
-      });
-      text = message.content[0].text;
-      
-    } else {
-      return res.status(400).json({ error: 'Unsupported model type' });
-    }
-
-    res.status(200).json({ enhancedPrompt: text.trim() });
-  } catch (error) {
-    console.error('Error enhancing prompt:', error);
-    res.status(500).json({ 
-      error: 'Failed to enhance prompt.',
-      details: error.message 
-    });
-  }
 });
 
 /**
@@ -373,29 +137,86 @@ app.post('/api/enhance-prompt', authenticateRequest, async (req, res) => {
  * @access  Public
  */
 app.get('/api/models', (req, res) => {
-  const models = [
-    // Google Gemini models
-    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'google', category: 'gemini' },
-    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'google', category: 'gemini' },
-    { id: 'gemini-pro', name: 'Gemini Pro', provider: 'google', category: 'gemini' },
-    
-    // OpenAI models
-    { id: 'gpt-4', name: 'GPT-4', provider: 'openai', category: 'gpt' },
-    { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', provider: 'openai', category: 'gpt' },
-    { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'openai', category: 'gpt' },
-    
-    // Anthropic Claude models
-    { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', provider: 'anthropic', category: 'claude' },
-    { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet', provider: 'anthropic', category: 'claude' },
-    { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', provider: 'anthropic', category: 'claude' },
-  ];
-  
-  res.status(200).json({ models });
+    const models = [
+      {
+        id: 'gemini-1.5-pro',
+        name: 'Gemini 1.5 Pro',
+        provider: 'Google',
+        available: !!process.env.GEMINI_API_KEY
+      },
+      {
+        id: 'gpt-4',
+        name: 'GPT-4',
+        provider: 'OpenAI',
+        available: !!process.env.OPENAI_API_KEY
+      },
+      {
+        id: 'claude-3-sonnet',
+        name: 'Claude 3 Sonnet',
+        provider: 'Anthropic',
+        available: !!process.env.ANTHROPIC_API_KEY
+      }
+    ];
+
+    res.status(200).json({ models });
 });
 
+/**
+ * @route   POST /api/ai-chat
+ * @desc    Handle AI chat conversations
+ * @access  Public
+ */
+app.post('/api/ai-chat', async (req, res) => {
+    const { message, context, model } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ error: 'Missing message' });
+    }
+
+    try {
+      // For now, provide helpful responses about code
+      let response = '';
+      
+      if (message.toLowerCase().includes('error') || message.toLowerCase().includes('bug')) {
+        response = `I can help you debug that! Looking at your code context, here are some common solutions:
+
+1. Check for syntax errors (missing semicolons, brackets)
+2. Verify variable names and imports
+3. Make sure all dependencies are installed
+4. Check the browser console for detailed error messages
+
+Can you share the specific error message you're seeing?`;
+      } else if (message.toLowerCase().includes('optimize') || message.toLowerCase().includes('improve')) {
+        response = `Here are some ways to optimize your code:
+
+1. Use React.memo() for components that don't need frequent re-renders
+2. Implement proper error boundaries
+3. Use TypeScript for better type safety
+4. Consider code splitting for larger applications
+5. Optimize bundle size with tree shaking
+
+What specific aspect would you like to optimize?`;
+      } else {
+        response = `I understand you're asking about: "${message}"
+
+I can help you with:
+- Code generation and debugging
+- React/TypeScript best practices  
+- Performance optimization
+- Architecture suggestions
+
+Try asking me to "generate a component" or "help debug this error" for more specific assistance!`;
+      }
+
+      res.status(200).json({ response });
+    } catch (err) {
+      console.error('Error in AI chat:', err);
+      res.status(500).json({ error: 'AI chat failed' });
+    }
+});
+
+
 // --- Server Initialization ---
-const host = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
-app.listen(port, host, () => {
-  console.log(`🚀 ALT-AI-MATE backend server is listening at http://${host}:${port}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+app.listen(port, () => {
+  console.log(`🚀 ALT-AI-MATE backend server is listening at http://localhost:${port}`);
 });

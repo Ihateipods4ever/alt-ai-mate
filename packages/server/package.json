@@ -4,7 +4,8 @@
   "main": "src/index.js",
   "type": "commonjs",
   "engines": {
-    "node": ">=18.17.1"
+    "node": ">=20.17.0",
+    "npm": ">=10.0.0"
   },
   "scripts": {
     "dev": "node --watch src/index.js",

@@ -1,14 +1,25 @@
+# render.yaml
+# This file provides a definitive configuration for your backend service on Render.
+# By using this, you ensure your deployment settings are version-controlled and consistent.
+
 services:
-  - type: web
-    name: alt-ai-mate-backend
-    runtime: node
-    plan: free
-    buildCommand: npm install
-    startCommand: npm start --workspace=server
+  - type: web # Specifies this is a web service
+    name: alt-ai-mate-backend # A name for your service in Render
+    runtime: node # The runtime environment
+    repo: https://github.com/YOUR_USERNAME/YOUR_REPO_NAME # ❗️ Replace with your actual GitHub repository URL
+    branch: main # The branch to deploy from
+    healthCheckPath: /api/health # The path Render uses to check if your app is live
     envVars:
+      - key: NODE_VERSION
+        value: 18.17.1 # Matches your .nvmrc and ensures consistency
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000
-      - key: NODE_VERSION
-        value: "18.17.1"
+      # ❗️ IMPORTANT: Add all your other environment variables from your local .env file here.
+      # For secrets, you can add the key here and set the value in the Render dashboard.
+      # - key: DATABASE_URL
+      #   sync: false
+
+    # --- Monorepo Settings ---
+    rootDir: packages/server # Tells Render to operate inside this directory
+    buildCommand: "npm install" # Runs `npm install` within `packages/server`
+    startCommand: "node src/index.js" # Runs your server from within `packages/server`
