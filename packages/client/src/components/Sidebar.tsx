@@ -1,9 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Code, Cloud, Server, ShieldCheck, Bot, Settings, CreditCard, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, Code, Cloud, Server, ShieldCheck, Bot, Settings, CreditCard, LogOut, User, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/contexts/AppContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 
 const navItems = [
   { to: '/app/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -37,7 +38,7 @@ const SidebarLink = ({ to, icon: Icon, label }: typeof navItems[0]) => (
  * The main sidebar component for application navigation.
  */
 function Sidebar() {
-  const { user, logout } = useApp();
+  const { user, logout, isMasterAdmin } = useApp();
 
   const handleLogout = () => {
     logout();
@@ -53,6 +54,31 @@ function Sidebar() {
       
       <nav className="flex flex-col gap-2 flex-1">
         {navItems.map((item) => <SidebarLink key={item.to} {...item} />)}
+        
+        {/* Admin Section */}
+        {isMasterAdmin() && (
+          <>
+            <div className="border-t pt-4 mt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Shield className="h-4 w-4 text-red-500" />
+                <span className="text-sm font-medium text-red-700">Admin Tools</span>
+                <Badge variant="destructive" className="text-xs">MASTER</Badge>
+              </div>
+              <NavLink
+                to="/app/admin"
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary',
+                    isActive && 'bg-muted text-primary'
+                  )
+                }
+              >
+                <Shield className="h-4 w-4" />
+                Admin Dashboard
+              </NavLink>
+            </div>
+          </>
+        )}
       </nav>
 
       {/* User section at bottom */}

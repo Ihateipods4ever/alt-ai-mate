@@ -15,6 +15,8 @@ interface User {
   email: string;
   name: string;
   subscription: 'free' | 'pro' | 'enterprise';
+  role: 'user' | 'admin' | 'master_admin';
+  permissions: string[];
 }
 
 interface AppState {
@@ -38,6 +40,14 @@ interface AppContextType extends AppState {
   
   // File actions
   updateProjectFiles: (projectId: string, files: Record<string, { content: string }>) => void;
+  
+  // Admin actions
+  hasPermission: (permission: string) => boolean;
+  isMasterAdmin: () => boolean;
+  getAllUsers: () => User[];
+  getAllProjects: () => Project[];
+  deleteUserProject: (userId: string, projectId: string) => void;
+  updateUserSubscription: (userId: string, subscription: 'free' | 'pro' | 'enterprise') => void;
   
   // Persistence
   saveToStorage: () => void;
@@ -65,6 +75,10 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     projects: [],
     isAuthenticated: false,
   });
+
+  // Mock data for admin functionality
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
 
   // Load data from localStorage on mount
   useEffect(() => {
@@ -100,13 +114,39 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     // Simulate API call
     return new Promise((resolve) => {
       setTimeout(() => {
-        // Mock authentication - in real app, this would call your API
-        if (email && password) {
+        // Check for master admin credentials
+        if (email === 'admin@alt-ai-mate.com' && password === 'MasterAdmin2024!') {
+          const user: User = {
+            id: 'master_admin_001',
+            email,
+            name: 'Master Administrator',
+            subscription: 'enterprise',
+            role: 'master_admin',
+            permissions: [
+              'all_access',
+              'user_management',
+              'project_management',
+              'billing_management',
+              'server_management',
+              'ip_management',
+              'system_maintenance',
+              'support_access',
+              'analytics_access',
+              'security_management'
+            ]
+          };
+          setState(prev => ({ ...prev, user, isAuthenticated: true }));
+          resolve(true);
+        }
+        // Regular user authentication
+        else if (email && password) {
           const user: User = {
             id: 'user_' + Date.now(),
             email,
             name: email.split('@')[0],
-            subscription: 'free'
+            subscription: 'free',
+            role: 'user',
+            permissions: ['basic_access', 'project_create', 'project_edit']
           };
           setState(prev => ({ ...prev, user, isAuthenticated: true }));
           resolve(true);
@@ -129,12 +169,46 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           id: 'user_' + Date.now(),
           email,
           name,
-          subscription: 'free'
+          subscription: 'free',
+          role: 'user',
+          permissions: ['basic_access', 'project_create', 'project_edit']
         };
         setState(prev => ({ ...prev, user, isAuthenticated: true }));
         resolve(true);
       }, 1000);
     });
+  };
+
+  // Admin functions
+  const hasPermission = (permission: string): boolean => {
+    if (!state.user) return false;
+    return state.user.permissions.includes('all_access') || state.user.permissions.includes(permission);
+  };
+
+  const isMasterAdmin = (): boolean => {
+    return state.user?.role === 'master_admin' || false;
+  };
+
+  const getAllUsers = (): User[] => {
+    if (!hasPermission('user_management')) return [];
+    return allUsers;
+  };
+
+  const getAllProjects = (): Project[] => {
+    if (!hasPermission('project_management')) return [];
+    return allProjects;
+  };
+
+  const deleteUserProject = (userId: string, projectId: string): void => {
+    if (!hasPermission('project_management')) return;
+    setAllProjects(prev => prev.filter(p => !(p.id === projectId)));
+  };
+
+  const updateUserSubscription = (userId: string, subscription: 'free' | 'pro' | 'enterprise'): void => {
+    if (!hasPermission('billing_management')) return;
+    setAllUsers(prev => prev.map(user => 
+      user.id === userId ? { ...user, subscription } : user
+    ));
   };
 
   const createProject = (name: string, type: string, files?: Record<string, { content: string }>) => {
@@ -200,6 +274,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     updateProjectFiles,
     saveToStorage,
     loadFromStorage,
+    hasPermission,
+    isMasterAdmin,
+    getAllUsers,
+    getAllProjects,
+    deleteUserProject,
+    updateUserSubscription,
   };
 
   return (

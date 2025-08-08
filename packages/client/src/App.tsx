@@ -11,6 +11,7 @@ import DashboardPage from './pages/DashboardPage';
 import IpGuardPage from './pages/IpGuardPage';
 import SettingsPage from './pages/SettingsPage';
 import BillingPage from './pages/BillingPage';
+import AdminDashboard from './pages/AdminDashboard';
 
 /**
  * Main application component with routing.
@@ -49,6 +50,7 @@ function App() {
             <Route path="ip-guard" element={<IpGuardPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="billing" element={<BillingPage />} />
+            <Route path="admin" element={<AdminDashboard />} />
           </Route>
         </Routes>
       </Router>
