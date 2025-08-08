@@ -231,13 +231,13 @@ function EditorPage() {
       recognition.interimResults = false;
       recognition.lang = 'en-US';
       
-      recognition.onresult = (event) => {
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
         const transcript = event.results[0][0].transcript;
         setInput(transcript);
         setIsListening(false);
       };
       
-      recognition.onerror = () => {
+      recognition.onerror = (event: Event) => {
         setIsListening(false);
       };
       
