@@ -1,18 +1,10 @@
 [build]
   base = "packages/client"
-  command = "chmod +x build.sh && ./build.sh"
+  command = "npm run build"
   publish = "dist"
 
 [build.environment]
-  NODE_VERSION = "18.17.1"
-  # Increase memory for the Node.js process to prevent out-of-memory errors during build
-  NODE_OPTIONS = "--max-old-space-size=1024"
-  # Configure secrets scanning to ignore the internal API key (it's meant to be public)
-  SECRETS_SCAN_OMIT_KEYS = "INTERNAL_API_KEY"
-  # Skip preflight checks to avoid dependency conflicts
-  SKIP_PREFLIGHT_CHECK = "true"
-  # Force npm to use the lockfile
-  NPM_FLAGS = "--production=false"
+  NODE_VERSION = "20"
 
 [[redirects]]
   from = "/*"

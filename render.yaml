@@ -3,13 +3,12 @@ services:
     name: alt-ai-mate-backend
     runtime: node
     plan: free
-    rootDir: packages/server
-    buildCommand: npm install --production --no-audit --no-fund
-    startCommand: node src/index.js
+    buildCommand: npm install
+    startCommand: npm start --workspace=server
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
       - key: NODE_VERSION
-        value: "20"
+        value: "18.17.1"
