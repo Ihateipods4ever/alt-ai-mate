@@ -109,10 +109,134 @@ ${code}
   return code;
 }
 
+// Fallback function to generate a basic template when OpenAI is not available
+function generateFallbackApplication(prompt: string): Record<string, string> {
+  const appName = prompt.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20) || 'myapp';
+  
+  return {
+    'src/App.tsx': `import React, { useState } from 'react';
+import './index.css';
+
+function App() {
+  const [message, setMessage] = useState('Hello World!');
+
+  return (
+    <div className="app">
+      <header className="app-header">
+        <h1>${appName.charAt(0).toUpperCase() + appName.slice(1)}</h1>
+        <p>Generated from prompt: "${prompt}"</p>
+        <p>{message}</p>
+        <button onClick={() => setMessage('Button clicked!')}>
+          Click me!
+        </button>
+      </header>
+    </div>
+  );
+}
+
+export default App;`,
+
+    'src/index.css': `body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.app {
+  text-align: center;
+}
+
+.app-header {
+  background-color: #282c34;
+  padding: 20px;
+  color: white;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+}
+
+button {
+  background-color: #61dafb;
+  border: none;
+  padding: 10px 20px;
+  font-size: 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 20px;
+}
+
+button:hover {
+  background-color: #21a9c7;
+}`,
+
+    'package.json': `{
+  "name": "${appName}",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@types/node": "^16.7.13",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1",
+    "typescript": "^4.4.2",
+    "web-vitals": "^2.1.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}`,
+
+    'README.md': `# ${appName.charAt(0).toUpperCase() + appName.slice(1)}
+
+Generated from prompt: "${prompt}"
+
+## Note
+This is a basic template generated because OpenAI API is not configured.
+To get AI-powered code generation, please configure your OPENAI_API_KEY in the backend.
+
+## Available Scripts
+
+- \`npm start\` - Runs the app in development mode
+- \`npm run build\` - Builds the app for production
+- \`npm test\` - Launches the test runner
+`
+  };
+}
+
 // Main function to generate the entire application
 export async function generateApplication(prompt: string): Promise<Record<string, string>> {
   if (!openai) {
-    return Promise.resolve({ 'error.txt': 'AI features are disabled. Please set your OPENAI_API_KEY.' });
+    console.warn('OpenAI not configured, using fallback generator');
+    return generateFallbackApplication(prompt);
   }
   console.log('Phase 1: Creating a plan...');
   const plan = await createPlan(prompt);
