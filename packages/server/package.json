@@ -8,9 +8,9 @@
     "npm": ">=10.0.0"
   },
   "scripts": {
-    "dev": "node --watch src/index.js",
-    "start": "node src/index.js",
-    "build": "echo \"No build step needed for JavaScript project\""
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.17.1",
@@ -24,5 +24,12 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "ALT-AI-MATE backend server"
+  "description": "ALT-AI-MATE backend server",
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.2.1",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.9.2"
+  }
 }

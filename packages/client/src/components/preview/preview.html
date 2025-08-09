@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Preview</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: white;
+    }
+    #root {
+      min-height: 100vh;
+      padding: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/javascript">
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+
+    window.addEventListener('message', (event) => {
+      // IMPORTANT: Add a security check for the origin of the message
+      // if (event.origin !== 'http://localhost:5173') return;
+
+      const { code, css } = event.data;
+
+      // Clear previous content and errors
+      root.render(null);
+      document.querySelectorAll('style[data-dynamic-style]').forEach(el => el.remove());
+
+      try {
+        // Add CSS
+        if (css) {
+          const style = document.createElement('style');
+          style.setAttribute('data-dynamic-style', 'true');
+          style.innerHTML = css;
+          document.head.appendChild(style);
+        }
+
+        // Prepare and transpile JSX
+        let fullCode = code;
+        if (!code.includes('import React')) {
+          fullCode = 'const React = window.React;\\n' + code;
+        }
+        const transformedCode = Babel.transform(fullCode, { presets: ['react'] }).code;
+
+        // Create a function from the code and execute it
+        const App = new Function('React', 'ReactDOM', transformedCode)(React, ReactDOM);
+        
+        // Render the main component
+        if (typeof App !== 'undefined') {
+          root.render(React.createElement(App));
+        } else {
+          // Fallback if no App component is found after execution
+          root.render(
+            React.createElement('div', { style: { color: 'orange', padding: '20px' } },
+              React.createElement('h3', null, 'No App component found'),
+              React.createElement('p', null, 'Make sure your code exports a default App component.')
+            )
+          );
+        }
+
+      } catch (err) {
+        console.error('Preview Error:', err);
+        // Display error in the preview window
+        root.render(
+          React.createElement('div', { style: { color: 'red', padding: '20px', fontFamily: 'monospace' } },
+            React.createElement('h3', null, 'Preview Error'),
+            React.createElement('pre', { style: { background: '#f5f5f5', padding: '10px', borderRadius: '4px', overflow: 'auto' } }, err.message),
+            React.createElement('details', { style: { marginTop: '10px' } },
+              React.createElement('summary', null, 'Stack Trace'),
+              React.createElement('pre', { style: { background: '#f5f5f5', padding: '10px', borderRadius: '4px', overflow: 'auto', fontSize: '12px' } }, err.stack || 'No stack trace available')
+            )
+          )
+        );
+      }
+    }, false);
+  </script>
+</body>
+</html>

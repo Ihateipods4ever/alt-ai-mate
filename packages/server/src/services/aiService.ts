@@ -1,444 +1,115 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import OpenAI from 'openai';
-import Anthropic from '@anthropic-ai/sdk';
+import { OpenAI } from 'openai';
 
-interface CodeGenerationRequest {
-  prompt: string;
-  language?: string;
-  framework?: string;
-  projectType?: string;
-}
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-interface CodeGenerationResponse {
-  code: string;
-  language: string;
-  framework: string;
-  explanation?: string;
-}
+// Phase 1: Deconstruct the prompt and create a plan
+async function createPlan(prompt: string): Promise<any> {
+  const planningPrompt = `
+You are an expert software architect. A user wants to build a React application.
+Analyze their request and break it down into a detailed, actionable plan.
 
-class AIService {
-  private gemini: GoogleGenerativeAI | null = null;
-  private openai: OpenAI | null = null;
-  private anthropic: Anthropic | null = null;
+User's request: "${prompt}"
 
-  constructor() {
-    // Initialize AI clients with API keys from environment
-    if (process.env.GEMINI_API_KEY) {
-      this.gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    }
-
-    if (process.env.OPENAI_API_KEY) {
-      this.openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-      });
-    }
-
-    if (process.env.ANTHROPIC_API_KEY) {
-      this.anthropic = new Anthropic({
-        apiKey: process.env.ANTHROPIC_API_KEY,
-      });
-    }
-  }
-
-  async generateCode(request: CodeGenerationRequest): Promise<CodeGenerationResponse> {
-    const { prompt, language = 'javascript', framework = 'none', projectType = 'web' } = request;
-
-    // Create a comprehensive prompt for code generation
-    const systemPrompt = `You are an expert software developer. Generate high-quality, production-ready code based on the user's requirements.
-
-Requirements:
-- Language: ${language}
-- Framework: ${framework}
-- Project Type: ${projectType}
-- User Request: ${prompt}
-
-Please generate complete, functional code that:
-1. Follows best practices and conventions
-2. Includes proper error handling
-3. Has clear comments explaining key functionality
-4. Is ready to run without modifications
-5. Uses modern syntax and patterns
-
-Return only the code without explanations or markdown formatting.`;
-
-    try {
-      // Try Gemini first (most reliable for code generation)
-      if (this.gemini) {
-        return await this.generateWithGemini(systemPrompt);
-      }
-
-      // Fallback to OpenAI
-      if (this.openai) {
-        return await this.generateWithOpenAI(systemPrompt);
-      }
-
-      // Fallback to Anthropic
-      if (this.anthropic) {
-        return await this.generateWithAnthropic(systemPrompt);
-      }
-
-      // Final fallback - generate template code
-      return this.generateFallbackCode(request);
-
-    } catch (error) {
-      console.error('AI code generation failed:', error);
-      return this.generateFallbackCode(request);
-    }
-  }
-
-  private async generateWithGemini(prompt: string): Promise<CodeGenerationResponse> {
-    if (!this.gemini) throw new Error('Gemini not initialized');
-
-    const model = this.gemini.getGenerativeModel({ model: 'gemini-1.5-pro' });
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const code = response.text();
-
-    return {
-      code: this.cleanCode(code),
-      language: 'javascript',
-      framework: 'none'
-    };
-  }
-
-  private async generateWithOpenAI(prompt: string): Promise<CodeGenerationResponse> {
-    if (!this.openai) throw new Error('OpenAI not initialized');
-
-    const completion = await this.openai.chat.completions.create({
-      model: 'gpt-4',
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 2000,
-      temperature: 0.7,
-    });
-
-    const code = completion.choices[0]?.message?.content || '';
-
-    return {
-      code: this.cleanCode(code),
-      language: 'javascript',
-      framework: 'none'
-    };
-  }
-
-  private async generateWithAnthropic(prompt: string): Promise<CodeGenerationResponse> {
-    if (!this.anthropic) throw new Error('Anthropic not initialized');
-
-    const message = await this.anthropic.messages.create({
-      model: 'claude-3-sonnet-20240229',
-      max_tokens: 2000,
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    const code = message.content[0]?.type === 'text' ? message.content[0].text : '';
-
-    return {
-      code: this.cleanCode(code),
-      language: 'javascript',
-      framework: 'none'
-    };
-  }
-
-  private generateFallbackCode(request: CodeGenerationRequest): CodeGenerationResponse {
-    const { prompt, language = 'javascript', framework = 'none', projectType = 'web' } = request;
-
-    let code = '';
-
-    switch (language.toLowerCase()) {
-      case 'typescript':
-      case 'tsx':
-        if (framework.toLowerCase() === 'react') {
-          code = `import React, { useState, useEffect } from 'react';
-
-interface Props {
-  title?: string;
-}
-
-const App: React.FC<Props> = ({ title = '${prompt}' }) => {
-  const [data, setData] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    // Initialize component
-    setData(['Welcome to your new app!']);
-  }, []);
-
-  const handleAction = () => {
-    setLoading(true);
-    // TODO: Implement functionality for: ${prompt}
-    setTimeout(() => {
-      setData(prev => [...prev, 'Action completed!']);
-      setLoading(false);
-    }, 1000);
-  };
-
-  return (
-    <div className="app">
-      <h1>{title}</h1>
-      <div className="content">
-        {data.map((item, index) => (
-          <p key={index}>{item}</p>
-        ))}
-      </div>
-      <button onClick={handleAction} disabled={loading}>
-        {loading ? 'Processing...' : 'Take Action'}
-      </button>
-    </div>
-  );
-};
-
-export default App;`;
-        } else {
-          code = `// ${prompt}
-interface Config {
-  name: string;
-  version: string;
-}
-
-class Application {
-  private config: Config;
-
-  constructor(config: Config) {
-    this.config = config;
-  }
-
-  public start(): void {
-    console.log(\`Starting \${this.config.name} v\${this.config.version}\`);
-    this.initialize();
-  }
-
-  private initialize(): void {
-    // TODO: Implement initialization logic for: ${prompt}
-    console.log('Application initialized successfully');
-  }
-
-  public processData(data: any[]): any[] {
-    // TODO: Implement data processing for: ${prompt}
-    return data.map(item => ({
-      ...item,
-      processed: true,
-      timestamp: new Date().toISOString()
-    }));
+Your output MUST be a JSON object with the following structure:
+{
+  "appName": "A short, descriptive name for the app in camelCase.",
+  "description": "A one-sentence description of the application.",
+  "features": [
+    "A list of key features and functionalities."
+  ],
+  "fileStructure": {
+    "src/App.tsx": "The main application component. It should import and render other components.",
+    "src/index.css": "CSS file for basic styling.",
+    "package.json": "The project's package.json file.",
+    "src/components/ExampleComponent.tsx": "Description of an example component."
   }
 }
 
-export default Application;`;
-        }
-        break;
+- **fileStructure**: List all the files that need to be created. Keys are file paths, and values are descriptions of what each file should contain.
+- Be thorough and think step-by-step. The plan should be comprehensive enough for another AI to generate the code.
+`;
 
-      case 'python':
-        code = `#!/usr/bin/env python3
-"""
-${prompt}
-"""
-
-import asyncio
-import logging
-from typing import List, Dict, Any
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-class Application:
-    def __init__(self, name: str = "${prompt}"):
-        self.name = name
-        self.data: List[Dict[str, Any]] = []
-        
-    async def initialize(self) -> None:
-        """Initialize the application"""
-        logger.info(f"Initializing {self.name}")
-        # TODO: Implement initialization logic for: ${prompt}
-        
-    async def process_data(self, data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Process input data"""
-        # TODO: Implement data processing for: ${prompt}
-        processed_data = []
-        for item in data:
-            processed_item = {
-                **item,
-                'processed': True,
-                'timestamp': asyncio.get_event_loop().time()
-            }
-            processed_data.append(processed_item)
-        return processed_data
-        
-    async def run(self) -> None:
-        """Main application loop"""
-        await self.initialize()
-        logger.info(f"{self.name} is running")
-        # TODO: Implement main logic for: ${prompt}
-
-if __name__ == "__main__":
-    app = Application()
-    asyncio.run(app.run())`;
-        break;
-
-      default: // JavaScript
-        if (framework.toLowerCase() === 'react') {
-          code = `import React, { useState, useEffect } from 'react';
-
-function App() {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    // Initialize component
-    setData(['Welcome to your new app!']);
-  }, []);
-
-  const handleAction = () => {
-    setLoading(true);
-    // TODO: Implement functionality for: ${prompt}
-    setTimeout(() => {
-      setData(prev => [...prev, 'Action completed!']);
-      setLoading(false);
-    }, 1000);
-  };
-
-  return (
-    <div className="app">
-      <h1>${prompt}</h1>
-      <div className="content">
-        {data.map((item, index) => (
-          <p key={index}>{item}</p>
-        ))}
-      </div>
-      <button onClick={handleAction} disabled={loading}>
-        {loading ? 'Processing...' : 'Take Action'}
-      </button>
-    </div>
-  );
-}
-
-export default App;`;
-        } else if (framework.toLowerCase() === 'node' || projectType.toLowerCase() === 'api') {
-          code = `const express = require('express');
-const cors = require('cors');
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-// Routes
-app.get('/', (req, res) => {
-  res.json({ 
-    message: '${prompt}',
-    status: 'running',
-    timestamp: new Date().toISOString()
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4-turbo',
+    messages: [
+      { role: 'system', content: planningPrompt },
+      { role: 'user', content: `Create a plan for this app: ${prompt}` }
+    ],
+    response_format: { type: "json_object" },
   });
-});
 
-app.get('/api/data', (req, res) => {
-  // TODO: Implement data endpoint for: ${prompt}
-  res.json({
-    data: ['Sample data item 1', 'Sample data item 2'],
-    count: 2
-  });
-});
+  const responseJsonString = completion.choices[0].message.content;
+  if (!responseJsonString) {
+    throw new Error("Failed to get a valid plan from the AI.");
+  }
+  return JSON.parse(responseJsonString);
+}
 
-app.post('/api/process', (req, res) => {
-  const { data } = req.body;
+// Phase 2: Generate code for a single file based on the plan
+async function generateFile(filePath: string, plan: any, generatedFiles: Record<string, string>): Promise<string> {
+  const fileDescription = plan.fileStructure[filePath];
   
-  // TODO: Implement processing logic for: ${prompt}
-  const processedData = data ? data.map(item => ({
-    ...item,
-    processed: true,
-    timestamp: new Date().toISOString()
-  })) : [];
-  
-  res.json({ 
-    success: true,
-    processedData,
-    message: 'Data processed successfully'
+  const generationPrompt = `
+You are an expert React developer. Your task is to write the code for a single file based on the provided plan and context.
+
+**Overall App Plan:**
+- **App Name:** ${plan.appName}
+- **Description:** ${plan.description}
+- **Features:**
+${plan.features.map((f: string) => `  - ${f}`).join('\n')}
+
+**File to Generate:**
+- **Path:** \`${filePath}\`
+- **Description:** ${fileDescription}
+
+**Project Context (already generated files):**
+${Object.entries(generatedFiles).map(([path, code]) => `
+\`${path}\`:
+\`\`\`
+${code}
+\`\`\`
+`).join('\n') || 'No files generated yet.'}
+
+**Instructions:**
+- Write the complete, production-quality code for the file: \`${filePath}\`.
+- The code must be fully functional, clean, and well-commented.
+- Adhere to modern best practices for React and TypeScript.
+- Do not include any markdown formatting (e.g., \`\`\`typescript) in your response.
+- Your response should be ONLY the raw code for the file.
+`;
+
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4-turbo',
+    messages: [
+      { role: 'system', content: generationPrompt },
+      { role: 'user', content: `Generate the code for ${filePath}` }
+    ],
   });
-});
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
-});
-
-app.listen(PORT, () => {
-  console.log(\`Server running on port \${PORT}\`);
-  console.log(\`Application: ${prompt}\`);
-});`;
-        } else {
-          code = `// ${prompt}
-
-class Application {
-  constructor(name = '${prompt}') {
-    this.name = name;
-    this.data = [];
-    this.initialized = false;
+  const code = completion.choices[0].message.content;
+  if (!code) {
+    throw new Error(`Failed to generate code for ${filePath}`);
   }
-
-  initialize() {
-    console.log(\`Initializing \${this.name}\`);
-    // TODO: Implement initialization logic for: ${prompt}
-    this.initialized = true;
-    return this;
-  }
-
-  processData(inputData) {
-    if (!this.initialized) {
-      throw new Error('Application not initialized');
-    }
-    
-    // TODO: Implement data processing for: ${prompt}
-    return inputData.map(item => ({
-      ...item,
-      processed: true,
-      timestamp: new Date().toISOString()
-    }));
-  }
-
-  async run() {
-    this.initialize();
-    console.log(\`\${this.name} is running\`);
-    
-    // TODO: Implement main application logic for: ${prompt}
-    const sampleData = [
-      { id: 1, value: 'Sample data 1' },
-      { id: 2, value: 'Sample data 2' }
-    ];
-    
-    const processed = this.processData(sampleData);
-    console.log('Processed data:', processed);
-    
-    return processed;
-  }
+  return code;
 }
 
-// Usage
-const app = new Application();
-app.run().then(result => {
-  console.log('Application completed:', result);
-}).catch(error => {
-  console.error('Application error:', error);
-});
+// Main function to generate the entire application
+export async function generateApplication(prompt: string): Promise<Record<string, string>> {
+  console.log('Phase 1: Creating a plan...');
+  const plan = await createPlan(prompt);
+  console.log('Plan created:', plan);
 
-export default Application;`;
-        }
-    }
+  const generatedFiles: Record<string, string> = {};
+  const filePaths = Object.keys(plan.fileStructure);
 
-    return {
-      code,
-      language,
-      framework
-    };
+  console.log('Phase 2: Generating files...');
+  for (const filePath of filePaths) {
+    console.log(`- Generating ${filePath}...`);
+    const code = await generateFile(filePath, plan, generatedFiles);
+    generatedFiles[filePath] = code;
+    console.log(`- Finished ${filePath}.`);
   }
 
-  private cleanCode(code: string): string {
-    // Remove markdown code blocks if present
-    return code
-      .replace(/^```[\w]*\n/, '')
-      .replace(/\n```$/, '')
-      .trim();
-  }
+  console.log('Application generation complete!');
+  return generatedFiles;
 }
-
-export default new AIService();

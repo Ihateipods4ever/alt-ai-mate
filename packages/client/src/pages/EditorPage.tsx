@@ -13,6 +13,7 @@ import { Bot, Loader2, AlertCircle, Download, FileText, Folder, HardDrive, Cpu, 
 import { cn } from "@/lib/utils";
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
+import LivePreview from '@/components/preview/LivePreview';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const INTERNAL_API_KEY = import.meta.env.VITE_INTERNAL_API_KEY;
@@ -61,9 +62,9 @@ const FileTreeItem = ({ item, level = 0, onFileSelect, activeFile }: FileTreeIte
         <>
             <div
                 onClick={handleToggle}
-                style={{ paddingLeft: `${level * 1.5}rem` }}
                 className={cn(
-                    "flex items-center gap-2 cursor-pointer p-2 hover:bg-muted rounded-md text-sm",
+                    "flex items-center gap-2 cursor-pointer py-2 pr-2 hover:bg-muted rounded-md text-sm",
+                    `pl-[${(level * 1.5) + 0.5}rem]`, // Use arbitrary padding for dynamic indentation
                     isSelected && "bg-muted"
                 )}
             >
@@ -268,105 +269,104 @@ function EditorPage() {
   const handleSendMessage = async () => {
     if (!input.trim()) return;
 
-    setIsAiLoading(true);
-    const newMessage: Message = { from: 'user', text: input };
-    setMessages(prevMessages => [...prevMessages, newMessage]);
+    const userMessage: Message = { from: 'user', text: input };
+    setMessages(prev => [...prev, userMessage]);
     const userInput = input;
     setInput('');
+    setIsAiLoading(true);
 
-    try {
-      // Check if this is a code generation request
-      const isCodeRequest = /generate|create|write|build|make|code|function|component/i.test(userInput);
-      
-      if (isCodeRequest) {
-        // Use the generateCode function from context
-        const generatedCode = await generateCode(userInput, 'javascript', 'react');
-        
-        // Create a new file with the generated code
-        const fileName = `generated_${Date.now()}.js`;
-        const updatedFiles = {
-          ...files,
-          [fileName]: { content: generatedCode }
-        };
-        
-        setFiles(updatedFiles);
-        setFileTree(buildFileTree(updatedFiles));
-        
-        // Update project files if we have a current project
-        if (currentProject) {
-          updateProjectFiles(currentProject.id, updatedFiles);
+    // Use a simple keyword check to decide if the user wants to generate a whole new app
+    const isGenerationRequest = /generate|create|build|make a/i.test(userInput);
+
+    if (isGenerationRequest) {
+      // --- Handle Full Application Generation ---
+      try {
+        const response = await fetch(`${API_URL}/api/generate-app`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-internal-api-key': INTERNAL_API_KEY,
+          },
+          body: JSON.stringify({ prompt: userInput }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to generate application.');
         }
-        
-        setMessages(prevMessages => [...prevMessages, { 
-          from: 'ai', 
-          text: `I've generated the code and created a new file: ${fileName}. Click on it to view the generated code!` 
-        }]);
-      } else {
-        // Handle as regular chat
+
+        const data = await response.json();
+        const { files: generatedFiles } = data;
+
+        // The AI returns a file structure, let's update our state.
+        // This will replace the current file structure with the new one.
+        const newFileState: FileState = {};
+        for (const path in generatedFiles) {
+          newFileState[path] = { content: generatedFiles[path] };
+        }
+
+        setFiles(newFileState);
+        setFileTree(buildFileTree(newFileState));
+
+        // Set the active file to the new App.tsx and update the editor
+        const newActiveFile = 'src/App.tsx';
+        setActiveFile(newActiveFile);
+        setEditorContent(newFileState[newActiveFile]?.content || '');
+
+        if (currentProject) {
+          updateProjectFiles(currentProject.id, newFileState);
+        }
+
+        const aiResponse: Message = {
+          from: 'ai',
+          text: `I've generated a new application for you. You can see the files on the left and a live preview on the right.`,
+        };
+        setMessages(prev => [...prev, aiResponse]);
+
+      } catch (error: any) {
+        console.error('App generation error:', error);
+        const aiResponse: Message = {
+          from: 'ai',
+          text: `Sorry, I encountered an error while generating the application: ${error.message}`,
+        };
+        setMessages(prev => [...prev, aiResponse]);
+      }
+    } else {
+      // --- Handle Regular AI Chat Assistance ---
+      try {
         const response = await fetch(`${API_URL}/api/ai-chat`, {
           method: 'POST',
           headers: {
-              'Content-Type': 'application/json',
-              'x-internal-api-key': INTERNAL_API_KEY,
+            'Content-Type': 'application/json',
+            'x-internal-api-key': INTERNAL_API_KEY,
           },
           body: JSON.stringify({
             message: userInput,
-            context: editorContent,
+            context: editorContent, // Send the current code as context
             model: selectedModel,
-            apiKeys
-          })
+          }),
         });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setMessages(prevMessages => [...prevMessages, { from: 'ai', text: data.response }]);
-        } else {
-          // Fallback response
-          setMessages(prevMessages => [...prevMessages, { 
-            from: 'ai', 
-            text: `I understand you want help with: "${userInput}". While I can't connect to external AI services right now, I can help you with code generation. Try asking me to "generate a React component" or "create a function for [specific task]".` 
-          }]);
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'AI chat failed.');
         }
+
+        const data = await response.json();
+        const aiResponse: Message = { from: 'ai', text: data.response };
+        setMessages(prev => [...prev, aiResponse]);
+
+      } catch (error: any) {
+        console.error('AI chat error:', error);
+        const aiResponse: Message = {
+          from: 'ai',
+          text: `Sorry, I couldn't connect to the AI assistant right now. Error: ${error.message}`,
+        };
+        setMessages(prev => [...prev, aiResponse]);
       }
-    } catch (error) {
-      console.error('AI chat error:', error);
-      
-      // Try to handle as code generation even if API fails
-      if (/generate|create|write|build|make|code|function|component/i.test(userInput)) {
-        try {
-          const generatedCode = await generateCode(userInput, 'javascript', 'react');
-          const fileName = `generated_${Date.now()}.js`;
-          const updatedFiles = {
-            ...files,
-            [fileName]: { content: generatedCode }
-          };
-          
-          setFiles(updatedFiles);
-          setFileTree(buildFileTree(updatedFiles));
-          
-          if (currentProject) {
-            updateProjectFiles(currentProject.id, updatedFiles);
-          }
-          
-          setMessages(prevMessages => [...prevMessages, { 
-            from: 'ai', 
-            text: `I've generated the code for you and created: ${fileName}` 
-          }]);
-        } catch (genError) {
-          setMessages(prevMessages => [...prevMessages, { 
-            from: 'ai', 
-            text: 'Sorry, I encountered an error generating code. Please try again with a more specific request.' 
-          }]);
-        }
-      } else {
-        setMessages(prevMessages => [...prevMessages, { 
-          from: 'ai', 
-          text: 'Sorry, I encountered an error. Please try again or ask me to generate code for you!' 
-        }]);
-      }
-    } finally {
-      setIsAiLoading(false);
     }
+
+    setIsAiLoading(false);
   };
 
   const handleVoiceInput = () => {
@@ -504,70 +504,6 @@ function EditorPage() {
 
     const cssContent = files['src/index.css']?.content || '';
     const jsContent = editorContent || files['src/App.tsx']?.content || '';
-    
-    const previewHtml = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <title>Preview</title>
-          <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-          <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-          <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-          <style>
-            body { 
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; 
-              margin: 0; 
-              padding: 0;
-              background: white;
-            } 
-            #root { 
-              min-height: 100vh;
-              padding: 1rem; 
-            }
-            ${cssContent}
-          </style>
-        </head>
-        <body>
-          <div id="root">Loading...</div>
-          <script type="text/babel">
-            try {
-              // Add React import if not present
-              let code = \`${jsContent.replace(/`/g, '\\`')}\`;
-              if (!code.includes('import React') && !code.includes('const React')) {
-                code = 'const React = window.React;\\n' + code;
-              }
-              
-              // Execute the code
-              eval(Babel.transform(code, { presets: ['react'] }).code);
-              
-              // Render the App component
-              const container = document.getElementById('root');
-              if (typeof App !== 'undefined') {
-                const root = ReactDOM.createRoot(container);
-                root.render(React.createElement(App));
-              } else {
-                container.innerHTML = '<div style="color: orange; padding: 20px;"><h3>No App component found</h3><p>Make sure your code exports a default App component.</p></div>';
-              }
-            } catch (err) {
-              console.error('Preview error:', err);
-              const root = document.getElementById('root');
-              root.innerHTML = \`
-                <div style="color: red; padding: 20px; font-family: monospace;">
-                  <h3>Preview Error</h3>
-                  <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow: auto;">\${err.message}</pre>
-                  <details style="margin-top: 10px;">
-                    <summary>Stack Trace</summary>
-                    <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow: auto; font-size: 12px;">\${err.stack || 'No stack trace available'}</pre>
-                  </details>
-                </div>
-              \`;
-            }
-          </script>
-        </body>
-      </html>
-    `;
 
     return (
        <Tabs defaultValue="preview" className="h-full flex flex-col">
@@ -589,7 +525,7 @@ function EditorPage() {
               </Select>
             </div>
             <div className="flex-grow p-4 bg-muted/20">
-              <iframe srcDoc={previewHtml} title="Live Preview" className="w-full h-full bg-white border rounded-md shadow-inner" sandbox="allow-scripts" />
+              <LivePreview code={jsContent} css={cssContent} />
             </div>
           </TabsContent>
           <TabsContent value="ai-assistant" className="flex-grow flex flex-col">
@@ -632,7 +568,7 @@ function EditorPage() {
                 </div>
               </div>
             </div>
-            <div className="flex-grow p-4 space-y-4 overflow-y-auto max-h-96" style={{ scrollbarWidth: 'thin' }}>
+            <div className="flex-grow p-4 space-y-4 overflow-y-auto max-h-96 thin-scrollbar">
                 {messages.map((msg, index) => (
                     <div key={index} className={cn("flex items-start gap-3", msg.from === 'user' && "justify-end")}>
                         {msg.from === 'ai' && <Avatar className="h-8 w-8"><AvatarFallback><Bot/></AvatarFallback></Avatar>}

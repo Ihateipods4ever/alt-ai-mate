@@ -1,11 +1,26 @@
 import { useState } from 'react';
+// import { loadStripe } from '@stripe/stripe-js';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Check, CreditCard, Download, Zap, Crown, Rocket } from 'lucide-react';
+import { Check, CreditCard, Download, Zap, Crown, Rocket, Loader2 } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
+import { cn } from '@/lib/utils';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+
+// Mock Stripe implementation for build compatibility
+const mockStripe = {
+  redirectToCheckout: async ({ sessionId }: { sessionId: string }) => {
+    console.log('Mock Stripe redirect to checkout:', sessionId);
+    alert('Stripe integration is not configured. This is a demo.');
+  }
+};
+
+const stripePromise = Promise.resolve(mockStripe);
 
 const plans = [
   {
@@ -78,13 +93,30 @@ function BillingPage() {
 
   const handleUpgrade = async (planId: string) => {
     setIsUpgrading(planId);
-    
-    // Simulate payment process
-    setTimeout(() => {
+
+    if (!user) {
+      alert('You must be logged in to upgrade.');
       setIsUpgrading(null);
-      // In a real app, this would update the user's subscription
-      alert(`Successfully upgraded to ${plans.find(p => p.id === planId)?.name} plan!`);
-    }, 2000);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/api/create-checkout-session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId, userId: user.id }),
+      });
+
+      const { sessionId, error } = await response.json();
+
+      if (error) throw new Error(error);
+
+      const stripe = await stripePromise;
+      await stripe?.redirectToCheckout({ sessionId });
+    } catch (error: any) {
+      alert(`Error: ${error.message}`);
+      setIsUpgrading(null);
+    }
   };
 
   const handleDownloadInvoice = (invoiceId: string) => {
@@ -154,7 +186,7 @@ function BillingPage() {
                       >
                         {isUpgradingThis ? (
                           <>
-                            <CreditCard className="mr-2 h-4 w-4 animate-pulse" />
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             Processing...
                           </>
                         ) : (
@@ -233,7 +265,7 @@ function BillingPage() {
                     <span>7 / {user?.subscription === 'free' ? '3' : '∞'}</span>
                   </div>
                   <div className="w-full bg-secondary rounded-full h-2">
-                    <div className="bg-primary h-2 rounded-full" style={{ width: user?.subscription === 'free' ? '100%' : '20%' }}></div>
+                    <div className={cn("bg-primary h-2 rounded-full", user?.subscription === 'free' ? 'w-full' : 'w-[20%]')}></div>
                   </div>
                 </div>
                 
@@ -243,7 +275,7 @@ function BillingPage() {
                     <span>1,247 / {user?.subscription === 'free' ? '1,000' : '∞'}</span>
                   </div>
                   <div className="w-full bg-secondary rounded-full h-2">
-                    <div className="bg-primary h-2 rounded-full" style={{ width: user?.subscription === 'free' ? '100%' : '30%' }}></div>
+                    <div className={cn("bg-primary h-2 rounded-full", user?.subscription === 'free' ? 'w-full' : 'w-[30%]')}></div>
                   </div>
                 </div>
                 
@@ -253,7 +285,7 @@ function BillingPage() {
                     <span>2.3 GB / {user?.subscription === 'free' ? '1 GB' : user?.subscription === 'pro' ? '50 GB' : '∞'}</span>
                   </div>
                   <div className="w-full bg-secondary rounded-full h-2">
-                    <div className="bg-primary h-2 rounded-full" style={{ width: user?.subscription === 'free' ? '100%' : '5%' }}></div>
+                    <div className={cn("bg-primary h-2 rounded-full", user?.subscription === 'free' ? 'w-full' : 'w-[5%]')}></div>
                   </div>
                 </div>
               </CardContent>
