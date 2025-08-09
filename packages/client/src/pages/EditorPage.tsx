@@ -16,7 +16,6 @@ import { saveAs } from 'file-saver';
 import LivePreview from '@/components/preview/LivePreview';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-const INTERNAL_API_KEY = import.meta.env.VITE_INTERNAL_API_KEY;
 
 // Type definition for a message
 interface Message {
@@ -285,7 +284,6 @@ function EditorPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-internal-api-key': INTERNAL_API_KEY,
           },
           body: JSON.stringify({ prompt: userInput }),
         });
@@ -338,7 +336,6 @@ function EditorPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-internal-api-key': INTERNAL_API_KEY,
           },
           body: JSON.stringify({
             message: userInput,

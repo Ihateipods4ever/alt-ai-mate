@@ -13,7 +13,6 @@ import { cn } from "@/lib/utils";
 
 // Use Vite's env variable for the API URL, with a fallback for local development.
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-const INTERNAL_API_KEY = import.meta.env.VITE_INTERNAL_API_KEY;
 
 /**
  * Phase 2: The New Project page where users define their project.
@@ -150,7 +149,6 @@ function NewProjectPage() {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'x-internal-api-key': INTERNAL_API_KEY,
                 },
                 body: JSON.stringify({ 
                     prompt, 
