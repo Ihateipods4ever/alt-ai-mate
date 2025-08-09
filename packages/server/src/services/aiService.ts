@@ -1,6 +1,14 @@
 import { OpenAI } from 'openai';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let openai: OpenAI | null = null;
+
+if (process.env.OPENAI_API_KEY) {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+} else {
+  console.warn('OPENAI_API_KEY is not set. AI-powered features will be disabled.');
+}
 
 // Phase 1: Deconstruct the prompt and create a plan
 async function createPlan(prompt: string): Promise<any> {
@@ -29,6 +37,10 @@ Your output MUST be a JSON object with the following structure:
 - Be thorough and think step-by-step. The plan should be comprehensive enough for another AI to generate the code.
 `;
 
+  if (!openai) {
+    throw new Error('OpenAI is not configured');
+  }
+  
   const completion = await openai.chat.completions.create({
     model: 'gpt-4-turbo',
     messages: [
@@ -78,6 +90,10 @@ ${code}
 - Your response should be ONLY the raw code for the file.
 `;
 
+  if (!openai) {
+    throw new Error('OpenAI is not configured');
+  }
+  
   const completion = await openai.chat.completions.create({
     model: 'gpt-4-turbo',
     messages: [
@@ -95,6 +111,9 @@ ${code}
 
 // Main function to generate the entire application
 export async function generateApplication(prompt: string): Promise<Record<string, string>> {
+  if (!openai) {
+    return Promise.resolve({ 'error.txt': 'AI features are disabled. Please set your OPENAI_API_KEY.' });
+  }
   console.log('Phase 1: Creating a plan...');
   const plan = await createPlan(prompt);
   console.log('Plan created:', plan);

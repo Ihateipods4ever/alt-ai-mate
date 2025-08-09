@@ -3,8 +3,8 @@ services:
     name: alt-ai-mate-backend
     runtime: node
     plan: free
-    buildCommand: cd packages/server && chmod +x build.sh && ./build.sh
-    startCommand: cd packages/server && node src/index.js
+    buildCommand: npm install --workspace=packages/server && npm run build --workspace=packages/server
+    startCommand: npm start --workspace=packages/server
     envVars:
       - key: NODE_ENV
         value: production

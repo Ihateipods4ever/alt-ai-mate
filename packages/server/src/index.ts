@@ -4,7 +4,7 @@ import { Pool } from 'pg';
 import dotenv from 'dotenv';
 import OpenAI from 'openai';
 import Stripe from 'stripe';
-import AIService from './services/aiService';
+import * as AIService from './services/aiService';
 
 // Load environment variables
 dotenv.config();
@@ -13,9 +13,14 @@ const app = express();
 const port = process.env.PORT || 3001;
 
 // --- Stripe Client ---
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2024-04-10',
-});
+let stripe: Stripe | null = null;
+if (process.env.STRIPE_SECRET_KEY) {
+  stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: '2025-07-30.basil',
+  });
+} else {
+  console.warn('STRIPE_SECRET_KEY is not set. Payment features will be disabled.');
+}
 
 // --- OpenAI Client ---
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -113,19 +118,13 @@ app.post('/api/generate-app', async (req: Request, res: Response) => {
     }
 
     try {
-        const result = await AIService.generateCode({
-            prompt,
-            language,
-            framework,
-            projectType,
-        });
-        // The new AIService returns a single 'code' string.
-        // To maintain compatibility with the frontend, we'll wrap it in the expected 'files' structure.
-        const files = {
-            'src/App.tsx': { content: result.code },
-            'src/index.css': { content: '/* Add your styles here */' },
-            'package.json': { content: JSON.stringify({ name: 'new-project', version: '0.1.0' }, null, 2) }
-        };
+        const result = await AIService.generateApplication(prompt);
+        // The generateApplication returns a Record<string, string> with file paths as keys and content as values
+        // Convert it to the expected format for the frontend
+        const files: Record<string, { content: string }> = {};
+        for (const [filePath, content] of Object.entries(result)) {
+            files[filePath] = { content };
+        }
 
         res.status(200).json({ files });
 
@@ -193,6 +192,9 @@ ${context || 'No code context provided.'}
 });
 
 app.post('/api/create-checkout-session', async (req: Request, res: Response) => {
+    if (!stripe) {
+      return res.status(503).json({ error: 'Payment features are currently disabled.' });
+    }
     const { planId, userId } = req.body;
 
     if (!planId || !userId) {

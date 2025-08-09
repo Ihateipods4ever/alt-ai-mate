@@ -11,7 +11,7 @@ services:
     healthCheckPath: /api/health # The path Render uses to check if your app is live
     envVars:
       - key: NODE_VERSION
-        value: 18.17.1 # Matches your .nvmrc and ensures consistency
+        value: 18.17.1 # Stable LTS version supported by Render
       - key: NODE_ENV
         value: production
       # ❗️ IMPORTANT: Add all your other environment variables from your local .env file here.

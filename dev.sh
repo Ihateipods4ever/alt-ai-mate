@@ -49,7 +49,7 @@ sleep 2
 
 # Start the Node.js backend server
 echo "Starting backend server..."
-(cd packages/server && npm run dev &)
+(cd packages/server && npm run dev > ../server-output.log 2>&1 &)
 BACKEND_PID=$!
 
 # Start the Vite development server for the frontend
@@ -59,7 +59,7 @@ if [ ! -d "$CLIENT_DIR/node_modules" ]; then
     echo "Frontend dependencies not found. Running npm install in $CLIENT_DIR..."
     (cd "$CLIENT_DIR" && npm install)
 fi
-(cd "$CLIENT_DIR" && npm run dev &)
+(cd "$CLIENT_DIR" && npm run dev > ../client-output.log 2>&1 &)
 VITE_PID=$!
 
 # A more robust function to wait for a server to be available
