@@ -40,15 +40,15 @@ git push -u origin main
    NODE_VERSION=18.17.1
    
    # Optional - Add these if you want AI features
-   OPENAI_API_KEY=your_openai_api_key_here
+   OPENAI_API_KEY=<your-openai-api-key>
    
    # Optional - Add these if you want payment features
-   STRIPE_SECRET_KEY=your_stripe_secret_key_here
-   STRIPE_PRO_PRICE_ID=your_stripe_pro_price_id
-   STRIPE_ENTERPRISE_PRICE_ID=your_stripe_enterprise_price_id
+   STRIPE_SECRET_KEY=<your-stripe-secret-key>
+   STRIPE_PRO_PRICE_ID=<your-stripe-pro-price-id>
+   STRIPE_ENTERPRISE_PRICE_ID=<your-stripe-enterprise-price-id>
    
    # Optional - Add database if needed
-   DATABASE_URL=your_database_url_here
+   DATABASE_URL=<your-database-url>
    ```
 
 6. Deploy! Your backend will be available at: `https://alt-ai-mate-backend.onrender.com`
@@ -64,7 +64,7 @@ git push -u origin main
    VITE_API_URL=https://alt-ai-mate-backend.onrender.com
    
    # Optional - Add if you want Stripe payments
-   VITE_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key_here
+   VITE_STRIPE_PUBLISHABLE_KEY=<your-stripe-publishable-key>
    ```
 
 6. Deploy! Your frontend will be available at: `https://your-site-name.netlify.app`

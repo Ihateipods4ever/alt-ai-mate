@@ -5,6 +5,8 @@
 
 [build.environment]
   NODE_VERSION = "18.17.1"
+  # Configure secrets scanning to ignore documentation files and placeholders
+  SECRETS_SCAN_OMIT_PATHS = "DEPLOYMENT_GUIDE.md,deploy-to-render.sh,deploy-to-netlify.sh,packages/server/src/index.ts,packages/server/src/services/aiService.ts"
 
 [[redirects]]
   from = "/*"

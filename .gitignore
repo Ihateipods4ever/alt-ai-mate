@@ -23,3 +23,9 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Output logs that may contain sensitive information
+*-output.log
+server.log
+client.log
+*.log
