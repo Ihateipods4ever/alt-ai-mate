@@ -10,6 +10,10 @@ import * as AIService from './services/aiService';
 // Load environment variables
 dotenv.config();
 
+// Force redeploy - Updated with intelligent code generation
+
+// Force redeploy - Updated with intelligent code generation
+
 const app = express();
 const port = process.env.PORT || 3001;
 
