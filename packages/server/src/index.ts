@@ -28,7 +28,12 @@ if (process.env.STRIPE_SECRET_KEY) {
 }
 
 // --- OpenAI Client ---
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let openai: OpenAI | null = null;
+if (process.env.OPENAI_API_KEY) {
+  openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+} else {
+  console.warn('OPENAI_API_KEY is not set. Will use user-provided API keys when available.');
+}
 
 // --- Stripe Price IDs ---
 const STRIPE_PRO_PRICE_ID = process.env.STRIPE_PRO_PRICE_ID || 'price_YOUR_PRO_PLAN_ID';
@@ -144,7 +149,7 @@ app.post('/api/generate-code', async (req: Request, res: Response) => {
 
   try {
     // Try AI generation first if API keys are available
-    if (apiKeys?.openai || process.env.OPENAI_API_KEY) {
+    if (apiKeys?.openai || openai) {
       try {
         const aiClient = apiKeys?.openai ? new OpenAI({ apiKey: apiKeys.openai }) : openai;
         if (aiClient) {
@@ -171,7 +176,6 @@ app.post('/api/generate-code', async (req: Request, res: Response) => {
       } catch (error: any) {
         console.error('AI generation failed, falling back to template:');
         console.error('Error details:', error.message);
-        console.error('Error code:', error.code);
         console.error('Full error:', error);
       }
     }
@@ -1099,15 +1103,12 @@ app.post('/api/ai-chat', async (req: Request, res: Response) => {
   }
 
   try {
-    // Check if we have API keys available
-    if (!apiKeys?.openai && !process.env.OPENAI_API_KEY) {
-      return res.status(400).json({ 
-        error: 'AI chat failed', 
-        details: 'No OpenAI API key provided. Please add your API key in Settings.' 
-      });
-    }
+    // Use user's API key if provided, otherwise use server key
+    const aiClient = apiKeys?.openai ? new OpenAI({ apiKey: apiKeys.openai }) : openai;
 
-    const systemPrompt = `
+    if (aiClient) {
+      console.log('AI Chat using API key:', apiKeys?.openai ? 'user-provided' : 'server-env');
+      const systemPrompt = `
 You are ALT-AI-MATE, a world-class AI software engineering assistant.
 You are helping a user who is working inside a code editor.
 Your responses should be helpful, concise, and directly related to their code or question.
@@ -1118,18 +1119,19 @@ Here is the user's current code context:
 ${context || 'No code context provided.'}
 \`\`\`
 `;
+      const completion = await aiClient.chat.completions.create({
+        model: model || 'gpt-4o-mini',
+        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: message }],
+      });
 
-    // Use user's API key if provided, otherwise use server key
-    const aiClient = apiKeys?.openai ? new OpenAI({ apiKey: apiKeys.openai }) : openai;
-    console.log('AI Chat using API key:', apiKeys?.openai ? 'user-provided' : 'server-env');
-
-    const completion = await aiClient.chat.completions.create({
-      model: model || 'gpt-4o-mini',
-      messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: message }],
-    });
-
-    const response = completion.choices[0].message.content;
-    res.status(200).json({ response });
+      const response = completion.choices[0].message.content;
+      res.status(200).json({ response });
+    } else {
+      res.status(400).json({
+        error: 'AI chat failed',
+        details: 'No OpenAI API key provided. Please add your API key in Settings.'
+      });
+    }
   } catch (err: any) {
     console.error('Error in AI chat:', err);
     res.status(500).json({ error: 'AI chat failed', details: err.message });

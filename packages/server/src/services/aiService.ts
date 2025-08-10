@@ -676,7 +676,7 @@ export async function generateApplication(prompt: string, apiKeys?: { openai?: s
     aiClient = new OpenAI({ apiKey: apiKeys.openai });
   }
   
-  if (!aiClient && !process.env.OPENAI_API_KEY) {
+  if (!aiClient) {
     console.warn('No OpenAI API key available, using fallback generator');
     return generateFallbackApplication(prompt);
   }
