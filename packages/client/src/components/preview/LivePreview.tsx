@@ -31,7 +31,7 @@ const LivePreview: React.FC<LivePreviewProps> = ({ code, css }) => {
       src="/src/components/preview/preview.html"
       title="Live Preview"
       className="w-full h-full bg-white border rounded-md shadow-inner"
-      sandbox="allow-scripts"
+        sandbox="allow-scripts allow-same-origin"
     />
   );
 };
