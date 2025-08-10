@@ -20,6 +20,5 @@ services:
       #   sync: false
 
     # --- Monorepo Settings ---
-    rootDir: packages/server # Tells Render to operate inside this directory
-    buildCommand: "npm install && npm run build" # Install dependencies and compile TypeScript
-    startCommand: "npm start" # Runs the compiled server from the dist directory
+    buildCommand: "npm install && cd packages/server && npm install && npm run build" # Install root deps, then server deps, then build
+    startCommand: "cd packages/server && npm start" # Runs the compiled server from the dist directory
