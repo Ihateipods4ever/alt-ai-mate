@@ -937,8 +937,8 @@ app.get('/api/models', (req: Request, res: Response) => {
       available: !!process.env.GEMINI_API_KEY
     },
     {
-      id: 'gpt-4',
-      name: 'GPT-4',
+      id: 'gpt-4o-mini',
+      name: 'GPT-4o Mini',
       provider: 'OpenAI',
       available: !!process.env.OPENAI_API_KEY
     },
@@ -990,7 +990,7 @@ Return only the enhanced prompt, nothing else.
 `;
 
       const completion = await userOpenAI.chat.completions.create({
-        model: model || 'gpt-4-turbo',
+        model: model || 'gpt-4o-mini',
         messages: [{ role: 'system', content: enhancementPrompt }, { role: 'user', content: prompt }],
       });
 

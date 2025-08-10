@@ -46,7 +46,7 @@ Your output MUST be a JSON object with the following structure:
   }
   
   const completion = await client.chat.completions.create({
-    model: 'gpt-4-turbo',
+    model: 'gpt-4o-mini',
     messages: [
       { role: 'system', content: planningPrompt },
       { role: 'user', content: `Create a plan for this app: ${prompt}` }
@@ -103,7 +103,7 @@ ${code}
   }
   
   const completion = await client.chat.completions.create({
-    model: 'gpt-4-turbo',
+    model: 'gpt-4o-mini',
     messages: [
       { role: 'system', content: generationPrompt },
       { role: 'user', content: `Generate the code for ${filePath}` }
