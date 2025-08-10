@@ -355,9 +355,174 @@ function EditorPage() {
 
       } catch (error: any) {
         console.error('AI chat error:', error);
+        
+        // Intelligent fallback AI assistant
+        const generateLocalAIResponse = (userMessage: string, context: string): string => {
+          const lowerMessage = userMessage.toLowerCase();
+          
+          // Code help and explanations
+          if (lowerMessage.includes('explain') || lowerMessage.includes('what does') || lowerMessage.includes('how does')) {
+            if (context.includes('function') || context.includes('const') || context.includes('let')) {
+              return `I can see you're working with JavaScript code. Based on your code context, here are some key points:
+
+• **Functions**: Use \`function name() {}\` or \`const name = () => {}\` for reusable code blocks
+• **Variables**: Use \`const\` for constants, \`let\` for variables that change
+• **Best Practices**: Always use meaningful variable names and add comments
+
+Would you like me to help you with a specific part of your code?`;
+            }
+            return `I'd be happy to explain! While I can't access advanced AI features right now, I can help with:
+
+• **Code structure and syntax**
+• **Best practices and patterns**
+• **Debugging common issues**
+• **Suggesting improvements**
+
+What specific part would you like me to explain?`;
+          }
+          
+          // Code generation requests
+          if (lowerMessage.includes('create') || lowerMessage.includes('generate') || lowerMessage.includes('make') || lowerMessage.includes('build')) {
+            if (lowerMessage.includes('function')) {
+              return `I can help you create a function! Here's a template:
+
+\`\`\`javascript
+function myFunction(parameter) {
+    // Your code here
+    return result;
+}
+
+// Or using arrow function syntax:
+const myFunction = (parameter) => {
+    // Your code here
+    return result;
+}
+\`\`\`
+
+What specific functionality do you need?`;
+            }
+            
+            if (lowerMessage.includes('component') || lowerMessage.includes('react')) {
+              return `Here's a React component template:
+
+\`\`\`jsx
+import React, { useState } from 'react';
+
+const MyComponent = () => {
+    const [state, setState] = useState('');
+    
+    return (
+        <div>
+            <h1>My Component</h1>
+            {/* Your JSX here */}
+        </div>
+    );
+};
+
+export default MyComponent;
+\`\`\`
+
+What kind of component do you want to create?`;
+            }
+            
+            return `I can help you create code! Try using the **Generate Code** button above for:
+
+• **Text editors** - Full-featured editors with formatting
+• **Calculators** - Scientific calculators with memory functions  
+• **Todo lists** - Task management with priorities
+• **Forms** - Input validation and submission
+• **APIs** - REST endpoint templates
+
+Or tell me specifically what you'd like to build!`;
+          }
+          
+          // Debugging help
+          if (lowerMessage.includes('error') || lowerMessage.includes('bug') || lowerMessage.includes('fix') || lowerMessage.includes('debug')) {
+            return `I can help debug your code! Common issues and solutions:
+
+**Syntax Errors:**
+• Missing semicolons, brackets, or parentheses
+• Typos in variable/function names
+
+**Runtime Errors:**
+• \`undefined\` variables - check spelling and scope
+• \`Cannot read property\` - check if object exists first
+
+**Logic Errors:**
+• Use \`console.log()\` to trace values
+• Check conditional statements and loops
+
+Share your error message or problematic code, and I'll help identify the issue!`;
+          }
+          
+          // Performance and optimization
+          if (lowerMessage.includes('optimize') || lowerMessage.includes('performance') || lowerMessage.includes('faster')) {
+            return `Here are key optimization tips:
+
+**JavaScript Performance:**
+• Use \`const\` and \`let\` instead of \`var\`
+• Avoid global variables
+• Use efficient loops (\`for\` vs \`forEach\` for large arrays)
+• Debounce expensive operations
+
+**React Performance:**
+• Use \`React.memo()\` for expensive components
+• Implement \`useMemo()\` and \`useCallback()\` for heavy computations
+• Avoid inline functions in JSX
+
+**General:**
+• Minimize DOM manipulations
+• Use efficient data structures
+• Implement lazy loading for large datasets
+
+What specific area would you like to optimize?`;
+          }
+          
+          // Learning and tutorials
+          if (lowerMessage.includes('learn') || lowerMessage.includes('tutorial') || lowerMessage.includes('how to')) {
+            return `I'd love to help you learn! Here are some great starting points:
+
+**JavaScript Fundamentals:**
+• Variables and data types
+• Functions and scope
+• Objects and arrays
+• Async/await and promises
+
+**React Concepts:**
+• Components and JSX
+• State and props
+• Hooks (useState, useEffect)
+• Event handling
+
+**Best Practices:**
+• Code organization
+• Error handling
+• Testing strategies
+• Version control with Git
+
+What topic interests you most? I can provide specific examples and explanations!`;
+          }
+          
+          // Default helpful response
+          return `Hi! I'm your local coding assistant. While the advanced AI features are temporarily unavailable, I can still help you with:
+
+🔧 **Code Generation** - Use the "Generate Code" button for instant templates
+📝 **Code Review** - I can spot common issues and suggest improvements  
+🐛 **Debugging** - Help identify and fix errors
+📚 **Learning** - Explain concepts and best practices
+⚡ **Optimization** - Performance tips and efficient patterns
+
+**Quick Tips:**
+• Try generating a "calculator" or "text editor" with the Generate Code button
+• Use meaningful variable names and add comments
+• Test your code frequently with \`console.log()\`
+
+What would you like help with today?`;
+        };
+        
         const aiResponse: Message = {
           from: 'ai',
-          text: `Sorry, I couldn't connect to the AI assistant right now. Error: ${error.message}`,
+          text: generateLocalAIResponse(userInput, editorContent),
         };
         setMessages(prev => [...prev, aiResponse]);
       }

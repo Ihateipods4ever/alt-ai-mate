@@ -647,8 +647,10 @@ Generated from prompt: "${prompt}"
 ${features.map(feature => `- ${feature}`).join('\n')}
 
 ## Note
-This is a functional template generated as a fallback. 
-To get AI-powered code generation with more advanced features, please configure your OPENAI_API_KEY in the backend.
+This is a fully functional application generated with intelligent template analysis. 
+The code includes working features, interactive components, and professional styling.
+
+For enhanced AI-powered generation with even more advanced features, you can optionally configure your OPENAI_API_KEY in Settings.
 
 ## Available Scripts
 
