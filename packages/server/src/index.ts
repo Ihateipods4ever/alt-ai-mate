@@ -1016,7 +1016,7 @@ Please enhance this prompt by:
 Return only the enhanced prompt, nothing else.
 `;
 
-
+      
       const completion = await userOpenAI.chat.completions.create({
         model: model || 'gpt-4o-mini',
         messages: [{ role: 'system', content: enhancementPrompt }, { role: 'user', content: prompt }],
@@ -1048,18 +1048,10 @@ Return only the enhanced prompt, nothing else.
 
       const enhancementPrompt = `
 You are an expert software architect and prompt engineer. \
-Your task is to enhance the user's prompt to make it more specific, detailed, and actionable for code generation. \
-
-
-      const anthropic = new Anthropic({ apiKey: apiKeys.anthropic });
-
-      const enhancementPrompt = `
-You are an expert software architect and prompt engineer. Your task is to enhance the user's prompt to make it more specific, detailed, and actionable for code generation.
-
-Original prompt: "${prompt}"
-Project type: "${projectType}"
-
-Please enhance this prompt by:
+Your task is to enhance the user's prompt to make it more specific, detailed, and actionable for code generation.
+Original prompt: "${prompt}". \
+Project type: "${projectType}". \
+Please enhance this prompt by: \
 1. Adding specific technical requirements
 2. Clarifying the user interface and user experience
 3. Specifying key features and functionality
@@ -1075,36 +1067,20 @@ Return only the enhanced prompt, nothing else.
         messages: [{ role: 'user', content:  `${enhancementPrompt}\n\nUser prompt: ${prompt}` }],
       });
       enhancedPrompt = completion.content[0].text;
-    } else {
+    }else {
       // Fallback enhancement without AI
       enhancedPrompt = `Create a ${projectType} application for: ${prompt}. \
 Include the following features: \
 - Clean, modern user interface with intuitive navigation \
-- Responsive design that works on desktop, tablet, and mobile \
-- Interactive elements with smooth animations and transitions \
-- Proper error handling and user feedback \
-- Well-structured, maintainable code with clear comments \
-- Modern best practices and security considerations \
-- Accessibility features for inclusive design \
-- Performance optimization for fast loading \
-- Cross-browser compatibility \
-- User authentication and data persistence where appropriate`;
+- Responsive design that works on desktop, tablet, and mobile`;
     }
     res.status(200).json({ enhancedPrompt });
   } catch (err: any) {
-    console.error('Error enhancing prompt:', err);
+      console.error('Error enhancing prompt:', err);
     // Fallback enhancement
     const enhancedPrompt = `Create a ${projectType} application for: ${prompt}. \
 Include the following features: \
-- Clean, modern user interface with intuitive navigation \
-- Responsive design that works on desktop, tablet, and mobile \
-- Interactive elements with smooth animations and transitions
-- Proper error handling and user feedback
-- Well-structured, maintainable code with clear comments
-- Modern best practices and security considerations
-- Accessibility features for inclusive design
-- Performance optimization for fast loading
-- Cross-browser compatibility
+- Responsive design that works on desktop, tablet, and mobile
 - User authentication and data persistence where appropriate`;
     
   }
@@ -1116,8 +1092,8 @@ Include the following features: \
  * @access  Public
  */
 app.post('/api/ai-chat', async (req: Request, res: Response) => {
-  const { message, context, model, apiKeys } = req.body;
-  
+    const { message, context, model, apiKeys } = req.body;
+
   if (!message) {
     return res.status(400).json({ error: 'Missing message' });
   }
@@ -1152,11 +1128,11 @@ ${context || 'No code context provided.'} \
       const completion = await aiClient.chat.completions.create({
         model: model || 'gpt-4o-mini',
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: message }],
-      });
+        });
 
       response = completion.choices[0].message.content || '';
       
-    } else if (model?.startsWith('gemini')) {
+      } else if (model?.startsWith('gemini')) {
       // Gemini models
       if (!apiKeys?.gemini && !process.env.GEMINI_API_KEY) {
         return res.status(400).json({
@@ -1192,7 +1168,7 @@ ${context || 'No code context provided.'} \
 
       const completion = await anthropicClient.messages.create({
         model: model,
-        max_tokens: 4000,
+        max_tokens: 1000,
         messages: [
           { role: 'user', content: `${systemPrompt}\n\n${message}` }
         ],
