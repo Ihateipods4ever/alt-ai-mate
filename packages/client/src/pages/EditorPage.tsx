@@ -332,6 +332,17 @@ function EditorPage() {
     } else {
       // --- Handle Regular AI Chat Assistance ---
       try {
+        // Get API keys from localStorage
+        const savedApiKeys = localStorage.getItem('alt-ai-mate-api-keys');
+        let apiKeys = {};
+        if (savedApiKeys) {
+          try {
+            apiKeys = JSON.parse(savedApiKeys);
+          } catch (error) {
+            console.warn('Failed to parse saved API keys:', error);
+          }
+        }
+
         const response = await fetch(`${API_URL}/api/ai-chat`, {
           method: 'POST',
           headers: {
@@ -341,6 +352,7 @@ function EditorPage() {
             message: userInput,
             context: editorContent, // Send the current code as context
             model: selectedModel,
+            apiKeys, // Send API keys to backend
           }),
         });
 

@@ -148,8 +148,9 @@ app.post('/api/generate-code', async (req: Request, res: Response) => {
       try {
         const aiClient = apiKeys?.openai ? new OpenAI({ apiKey: apiKeys.openai }) : openai;
         if (aiClient) {
+          console.log('Using AI generation with API key:', apiKeys?.openai ? 'user-provided' : 'server-env');
           const completion = await aiClient.chat.completions.create({
-            model: 'gpt-4-turbo',
+            model: 'gpt-4o-mini',
             messages: [
               {
                 role: 'system',
@@ -167,8 +168,11 @@ app.post('/api/generate-code', async (req: Request, res: Response) => {
             return res.status(200).json({ code: aiCode });
           }
         }
-      } catch (error) {
-        console.warn('AI generation failed, falling back to template:', error);
+      } catch (error: any) {
+        console.error('AI generation failed, falling back to template:');
+        console.error('Error details:', error.message);
+        console.error('Error code:', error.code);
+        console.error('Full error:', error);
       }
     }
 
@@ -1088,13 +1092,21 @@ Include the following features:
  * @access  Public
  */
 app.post('/api/ai-chat', async (req: Request, res: Response) => {
-  const { message, context, model } = req.body;
+  const { message, context, model, apiKeys } = req.body;
   
   if (!message) {
     return res.status(400).json({ error: 'Missing message' });
   }
 
   try {
+    // Check if we have API keys available
+    if (!apiKeys?.openai && !process.env.OPENAI_API_KEY) {
+      return res.status(400).json({ 
+        error: 'AI chat failed', 
+        details: 'No OpenAI API key provided. Please add your API key in Settings.' 
+      });
+    }
+
     const systemPrompt = `
 You are ALT-AI-MATE, a world-class AI software engineering assistant.
 You are helping a user who is working inside a code editor.
@@ -1107,8 +1119,12 @@ ${context || 'No code context provided.'}
 \`\`\`
 `;
 
-    const completion = await openai.chat.completions.create({
-      model: model || 'gpt-4-turbo',
+    // Use user's API key if provided, otherwise use server key
+    const aiClient = apiKeys?.openai ? new OpenAI({ apiKey: apiKeys.openai }) : openai;
+    console.log('AI Chat using API key:', apiKeys?.openai ? 'user-provided' : 'server-env');
+
+    const completion = await aiClient.chat.completions.create({
+      model: model || 'gpt-4o-mini',
       messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: message }],
     });
 
