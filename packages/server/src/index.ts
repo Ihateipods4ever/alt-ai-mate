@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { Pool } from 'pg';
 import OpenAI from 'openai';
 import Stripe from 'stripe';
+import Anthropic from '@anthropic-ai/sdk';
 import * as AIService from './services/aiService';
 
 // Load environment variables
@@ -177,6 +178,9 @@ app.post('/api/generate-code', async (req: Request, res: Response) => {
         console.error('AI generation failed, falling back to template:');
         console.error('Error details:', error.message);
         console.error('Full error:', error);
+	      if (error.code === 'rate_limit_exceeded') {
+            return res.status(429).json({ error: 'Rate limit exceeded', details: error.message });
+        }
       }
     }
 
@@ -923,6 +927,9 @@ app.post('/api/generate-app', async (req: Request, res: Response) => {
     res.status(200).json({ files });
   } catch (err: any) {
     console.error('Error generating app:', err);
+    if (err.code === 'rate_limit_exceeded') {
+      return res.status(429).json({ error: 'Rate limit exceeded', details: err.message });
+    }
     res.status(500).json({ error: 'App generation failed', details: err.message });
   }
 });
@@ -935,22 +942,40 @@ app.post('/api/generate-app', async (req: Request, res: Response) => {
 app.get('/api/models', (req: Request, res: Response) => {
   const models = [
     {
-      id: 'gemini-1.5-pro',
-      name: 'Gemini 1.5 Pro',
-      provider: 'Google',
-      available: !!process.env.GEMINI_API_KEY
-    },
-    {
       id: 'gpt-4o-mini',
       name: 'GPT-4o Mini',
       provider: 'OpenAI',
-      available: !!process.env.OPENAI_API_KEY
+      available: !!openai || 'Requires API key'
     },
     {
-      id: 'claude-3-sonnet',
+      id: 'gpt-4o',
+      name: 'GPT-4o',
+      provider: 'OpenAI',
+      available: !!openai || 'Requires API key'
+    },
+    {
+      id: 'gemini-1.5-pro',
+      name: 'Gemini 1.5 Pro',
+      provider: 'Google',
+      available: !!process.env.GEMINI_API_KEY || 'Requires API key'
+    },
+    {
+      id: 'gemini-1.5-flash',
+      name: 'Gemini 1.5 Flash',
+      provider: 'Google',
+      available: !!process.env.GEMINI_API_KEY || 'Requires API key'
+    },
+    {
+      id: 'claude-3-5-sonnet-20241022',
+      name: 'Claude 3.5 Sonnet',
+      provider: 'Anthropic',
+      available: !!process.env.ANTHROPIC_API_KEY || 'Requires API key'
+    },
+    {
+      id: 'claude-3-sonnet-20240229',
       name: 'Claude 3 Sonnet',
       provider: 'Anthropic',
-      available: !!process.env.ANTHROPIC_API_KEY
+      available: !!process.env.ANTHROPIC_API_KEY || 'Requires API key'
     }
   ];
 
@@ -1025,7 +1050,15 @@ Return only the enhanced prompt, nothing else.
       enhancedPrompt = result.response.text();
     } else if (model?.startsWith('claude') && apiKeys?.anthropic) {
       // Use Claude with user's API key
-      const Anthropic = require('@anthropic-ai/sdk');
+       
+    } else if (model?.startsWith('claude') && apiKeys?.anthropic) {
+      // Use Claude with user's API key
+      const anthropic = new Anthropic({ apiKey: apiKeys.anthropic });
+
+      const enhancementPrompt = `
+You are an expert software architect and prompt engineer. Your task is to enhance the user's prompt to make it more specific, detailed, and actionable for code generation.
+
+
       const anthropic = new Anthropic({ apiKey: apiKeys.anthropic });
 
       const enhancementPrompt = `
@@ -1103,12 +1136,7 @@ app.post('/api/ai-chat', async (req: Request, res: Response) => {
   }
 
   try {
-    // Use user's API key if provided, otherwise use server key
-    const aiClient = apiKeys?.openai ? new OpenAI({ apiKey: apiKeys.openai }) : openai;
-
-    if (aiClient) {
-      console.log('AI Chat using API key:', apiKeys?.openai ? 'user-provided' : 'server-env');
-      const systemPrompt = `
+    const systemPrompt = `
 You are ALT-AI-MATE, a world-class AI software engineering assistant.
 You are helping a user who is working inside a code editor.
 Your responses should be helpful, concise, and directly related to their code or question.
@@ -1119,21 +1147,87 @@ Here is the user's current code context:
 ${context || 'No code context provided.'}
 \`\`\`
 `;
+
+    let response = '';
+
+    // Handle different model types
+    if (model?.startsWith('gpt') || !model) {
+      // OpenAI models
+      const aiClient = apiKeys?.openai ? new OpenAI({ apiKey: apiKeys.openai }) : openai;
+      
+      if (!aiClient) {
+        return res.status(400).json({
+          error: 'AI chat failed',
+          details: 'No OpenAI API key provided. Please add your API key in Settings.'
+        });
+      }
+
+      console.log('AI Chat using OpenAI with API key:', apiKeys?.openai ? 'user-provided' : 'server-env');
+      
       const completion = await aiClient.chat.completions.create({
         model: model || 'gpt-4o-mini',
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: message }],
       });
 
-      const response = completion.choices[0].message.content;
-      res.status(200).json({ response });
+      response = completion.choices[0].message.content || '';
+      
+    } else if (model?.startsWith('gemini')) {
+      // Gemini models
+      if (!apiKeys?.gemini && !process.env.GEMINI_API_KEY) {
+        return res.status(400).json({
+          error: 'AI chat failed',
+          details: 'No Gemini API key provided. Please add your API key in Settings.'
+        });
+      }
+
+      console.log('AI Chat using Gemini with API key:', apiKeys?.gemini ? 'user-provided' : 'server-env');
+      
+      const { GoogleGenerativeAI } = require('@google/generative-ai');
+      const genAI = new GoogleGenerativeAI(apiKeys?.gemini || process.env.GEMINI_API_KEY);
+      const geminiModel = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+
+      const fullPrompt = `${systemPrompt}\n\nUser: ${message}`;
+      const result = await geminiModel.generateContent(fullPrompt);
+      response = result.response.text();
+      
+    } else if (model?.startsWith('claude')) {
+      // Anthropic models
+      if (!apiKeys?.anthropic && !process.env.ANTHROPIC_API_KEY) {
+        return res.status(400).json({
+          error: 'AI chat failed',
+          details: 'No Anthropic API key provided. Please add your API key in Settings.'
+        });
+      }
+
+      console.log('AI Chat using Anthropic with API key:', apiKeys?.anthropic ? 'user-provided' : 'server-env');
+      
+      const anthropicClient = new Anthropic({
+        apiKey: apiKeys?.anthropic || process.env.ANTHROPIC_API_KEY,
+      });
+
+      const completion = await anthropicClient.messages.create({
+        model: model,
+        max_tokens: 4000,
+        messages: [
+          { role: 'user', content: `${systemPrompt}\n\n${message}` }
+        ],
+      });
+
+      response = completion.content[0].type === 'text' ? completion.content[0].text : '';
+      
     } else {
-      res.status(400).json({
-        error: 'AI chat failed',
-        details: 'No OpenAI API key provided. Please add your API key in Settings.'
+      return res.status(400).json({
+        error: 'Unsupported model',
+        details: `Model ${model} is not supported. Please use a supported model.`
       });
     }
+
+    res.status(200).json({ response });
   } catch (err: any) {
     console.error('Error in AI chat:', err);
+    if (err.code === 'rate_limit_exceeded') {
+      return res.status(429).json({ error: 'Rate limit exceeded', details: err.message });
+    }
     res.status(500).json({ error: 'AI chat failed', details: err.message });
   }
 });

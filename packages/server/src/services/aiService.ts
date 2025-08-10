@@ -699,8 +699,12 @@ export async function generateApplication(prompt: string, apiKeys?: { openai?: s
 
     console.log('Application generation complete!');
     return generatedFiles;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in AI generation, falling back to template:', error);
+    // Re-throw rate limit errors so they can be handled properly by the endpoint
+    if (error.code === 'rate_limit_exceeded') {
+      throw error;
+    }
     return generateFallbackApplication(prompt);
   }
 }

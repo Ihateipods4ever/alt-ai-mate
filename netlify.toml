@@ -12,3 +12,9 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Add CORS headers for assets to allow them to be loaded in the preview iframe
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
