@@ -1003,11 +1003,9 @@ app.post('/api/enhance-prompt', async (req: Request, res: Response) => {
       const userOpenAI = new OpenAI({ apiKey: apiKeys.openai });
       
       const enhancementPrompt = `
-You are an expert software architect and prompt engineer. Your task is to enhance the user's prompt to make it more specific, detailed, and actionable for code generation.
-
-Original prompt: "${prompt}"
-Project type: "${projectType}"
-
+You are an expert software architect and prompt engineer. \
+Your task is to enhance the user's prompt to make it more specific, detailed, and actionable for code generation. \
+Original prompt: "${prompt}" Project type: "${projectType}" \
 Please enhance this prompt by:
 1. Adding specific technical requirements
 2. Clarifying the user interface and user experience
@@ -1018,31 +1016,27 @@ Please enhance this prompt by:
 Return only the enhanced prompt, nothing else.
 `;
 
+
       const completion = await userOpenAI.chat.completions.create({
         model: model || 'gpt-4o-mini',
         messages: [{ role: 'system', content: enhancementPrompt }, { role: 'user', content: prompt }],
       });
-
       enhancedPrompt = completion.choices[0].message.content || '';
     } else if (model?.startsWith('gemini') && apiKeys?.gemini) {
       // Use Gemini with user's API key
       const { GoogleGenerativeAI } = require('@google/generative-ai');
       const genAI = new GoogleGenerativeAI(apiKeys.gemini);
       const geminiModel = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
-
       const enhancementPrompt = `
-You are an expert software architect and prompt engineer. Your task is to enhance the user's prompt to make it more specific, detailed, and actionable for code generation.
-
-Original prompt: "${prompt}"
-Project type: "${projectType}"
-
+You are an expert software architect and prompt engineer. \
+Your task is to enhance the user's prompt to make it more specific, detailed, and actionable for code generation. \
+Original prompt: "${prompt}" Project type: "${projectType}" \
 Please enhance this prompt by:
 1. Adding specific technical requirements
 2. Clarifying the user interface and user experience
 3. Specifying key features and functionality
 4. Adding relevant technology stack suggestions
 5. Making it more actionable for code generation
-
 Return only the enhanced prompt, nothing else.
 `;
 
@@ -1050,13 +1044,11 @@ Return only the enhanced prompt, nothing else.
       enhancedPrompt = result.response.text();
     } else if (model?.startsWith('claude') && apiKeys?.anthropic) {
       // Use Claude with user's API key
-       
-    } else if (model?.startsWith('claude') && apiKeys?.anthropic) {
-      // Use Claude with user's API key
       const anthropic = new Anthropic({ apiKey: apiKeys.anthropic });
 
       const enhancementPrompt = `
-You are an expert software architect and prompt engineer. Your task is to enhance the user's prompt to make it more specific, detailed, and actionable for code generation.
+You are an expert software architect and prompt engineer. \
+Your task is to enhance the user's prompt to make it more specific, detailed, and actionable for code generation. \
 
 
       const anthropic = new Anthropic({ apiKey: apiKeys.anthropic });
@@ -1080,36 +1072,32 @@ Return only the enhanced prompt, nothing else.
       const completion = await anthropic.messages.create({
         model: 'claude-3-sonnet-20240229',
         max_tokens: 1000,
-        messages: [{ role: 'user', content: enhancementPrompt + '\n\nUser prompt: ' + prompt }],
+        messages: [{ role: 'user', content:  `${enhancementPrompt}\n\nUser prompt: ${prompt}` }],
       });
-
       enhancedPrompt = completion.content[0].text;
     } else {
       // Fallback enhancement without AI
-      enhancedPrompt = `Create a ${projectType} application for: ${prompt}. 
-
-Include the following features:
-- Clean, modern user interface with intuitive navigation
-- Responsive design that works on desktop, tablet, and mobile
-- Interactive elements with smooth animations and transitions
-- Proper error handling and user feedback
-- Well-structured, maintainable code with clear comments
-- Modern best practices and security considerations
-- Accessibility features for inclusive design
-- Performance optimization for fast loading
-- Cross-browser compatibility
+      enhancedPrompt = `Create a ${projectType} application for: ${prompt}. \
+Include the following features: \
+- Clean, modern user interface with intuitive navigation \
+- Responsive design that works on desktop, tablet, and mobile \
+- Interactive elements with smooth animations and transitions \
+- Proper error handling and user feedback \
+- Well-structured, maintainable code with clear comments \
+- Modern best practices and security considerations \
+- Accessibility features for inclusive design \
+- Performance optimization for fast loading \
+- Cross-browser compatibility \
 - User authentication and data persistence where appropriate`;
     }
-
     res.status(200).json({ enhancedPrompt });
   } catch (err: any) {
     console.error('Error enhancing prompt:', err);
     // Fallback enhancement
-    const enhancedPrompt = `Create a ${projectType} application for: ${prompt}. 
-    
-Include the following features:
-- Clean, modern user interface with intuitive navigation
-- Responsive design that works on desktop, tablet, and mobile
+    const enhancedPrompt = `Create a ${projectType} application for: ${prompt}. \
+Include the following features: \
+- Clean, modern user interface with intuitive navigation \
+- Responsive design that works on desktop, tablet, and mobile \
 - Interactive elements with smooth animations and transitions
 - Proper error handling and user feedback
 - Well-structured, maintainable code with clear comments
@@ -1119,7 +1107,6 @@ Include the following features:
 - Cross-browser compatibility
 - User authentication and data persistence where appropriate`;
     
-    res.status(200).json({ enhancedPrompt });
   }
 });
 
@@ -1136,16 +1123,14 @@ app.post('/api/ai-chat', async (req: Request, res: Response) => {
   }
 
   try {
-    const systemPrompt = `
-You are ALT-AI-MATE, a world-class AI software engineering assistant.
-You are helping a user who is working inside a code editor.
-Your responses should be helpful, concise, and directly related to their code or question.
-Use markdown for code snippets and formatting.
-
-Here is the user's current code context:
-\`\`\`
-${context || 'No code context provided.'}
-\`\`\`
+    const systemPrompt = `You are ALT-AI-MATE, a world-class AI software engineering assistant. \
+You are helping a user who is working inside a code editor. \
+Your responses should be helpful, concise, and directly related to their code or question. \
+Use markdown for code snippets and formatting. \
+Here is the user's current code context: \
+\`\`\` \
+${context || 'No code context provided.'} \
+\`\`\` \
 `;
 
     let response = '';
