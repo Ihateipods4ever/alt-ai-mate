@@ -21,4 +21,4 @@ services:
 
     # --- Monorepo Settings ---
     buildCommand: "npm install && cd packages/server && npm install && npm run build" # Install root deps, then server deps, then build
-    startCommand: "cd packages/server && npm start" # Runs the compiled server from the dist directory
+    startCommand: "cd packages/server && node dist/index.js" # Runs the compiled server from the dist directory
