@@ -966,7 +966,7 @@ app.get('/api/models', (req: Request, res: Response) => {
       available: !!process.env.GEMINI_API_KEY || 'Requires API key'
     },
     {
-      id: 'claude-3-5-sonnet-20241022',
+      id: 'claude-3-5-sonnet-20240620',
       name: 'Claude 3.5 Sonnet',
       provider: 'Anthropic',
       available: !!process.env.ANTHROPIC_API_KEY || 'Requires API key'
