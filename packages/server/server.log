@@ -1,1 +1,3 @@
+OPENAI_API_KEY is not set. AI-powered features will be disabled.
+STRIPE_SECRET_KEY is not set. Payment features will be disabled.
 🚀 ALT-AI-MATE backend server is listening at http://localhost:3001
