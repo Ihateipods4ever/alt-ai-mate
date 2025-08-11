@@ -278,6 +278,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+ '-x-internal-api-key': import.meta.env.VITE_INTERNAL_API_KEY as string,
         },
         body: JSON.stringify({ prompt, language, framework }),
       });

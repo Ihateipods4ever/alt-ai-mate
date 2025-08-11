@@ -57,5 +57,6 @@ function App() {
     </AppProvider>
   );
 }
+(window as any).App = App;
 
 export default App;

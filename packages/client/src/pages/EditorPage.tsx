@@ -502,8 +502,11 @@ function EditorPage() {
         )
     }
 
+    // Encode jsContent for safe embedding in the srcDoc string
     const cssContent = files['src/index.css']?.content || '';
     const jsContent = editorContent || files['src/App.tsx']?.content || '';
+    const encodedJsContent = btoa(jsContent);
+
     const previewHtml = `
       <!DOCTYPE html>
       <html>
@@ -532,7 +535,9 @@ function EditorPage() {
           <div id="root">Loading...</div>
           <script type="text/babel">
             try {
-              let code = \`${jsContent.replace(/`/g, '\\`')}\`;
+              // Decode the Base64 encoded JavaScript content
+              const encodedCode = '${encodedJsContent}';
+              let code = atob(encodedCode);
               
               // Ensure React is available in the script scope
               if (!code.includes('import React') && !code.includes('const React')) {
