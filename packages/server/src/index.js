@@ -1,11 +1,12 @@
-const express = require('express');
-const cors = require('cors');
-const { Pool } = require('pg');
-const dotenv = require('dotenv');
-const aiService = require('./services/aiService.ts');
+import cors from 'cors'; // Import the cors package
+import { Pool } from 'pg';
+import express from 'express';
+import dotenv from 'dotenv';
+import aiService from './services/aiService.js'; // Assuming this file exists and exports an object
 
 // Load environment variables
-dotenv.config();
+dotenv.config(); // Assuming dotenv.config() is still needed and works with import
+
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -19,14 +20,14 @@ const pool = new Pool({
   port: parseInt(process.env.DB_PORT || '5432'),
 });
 
+app.use(cors()); // Use the cors middleware
+
 // --- Middleware ---
 // Request logging middleware
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
-  next();
+ next();
 });
-// Enable CORS for all routes to allow the frontend to connect
-app.use(cors());
 // Parse JSON bodies for API requests
 app.use(express.json());
 

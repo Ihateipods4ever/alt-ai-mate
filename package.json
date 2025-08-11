@@ -7,7 +7,7 @@
   ],
   "scripts": {
     "dev": "concurrently \"npm:dev:server\" \"npm:dev:client\"",
-    "dev:server": "npm run dev --workspace=server",
+    "dev:server": "npm exec --workspace=server ts-node --esm --watch src/index.js",
     "dev:client": "npm run dev --workspace=client"
   },
   "devDependencies": {
@@ -17,5 +17,8 @@
   "main": "index.js",
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5"
+  }
 }

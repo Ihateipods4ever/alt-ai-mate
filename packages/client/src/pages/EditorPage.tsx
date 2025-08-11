@@ -504,7 +504,6 @@ function EditorPage() {
 
     const cssContent = files['src/index.css']?.content || '';
     const jsContent = editorContent || files['src/App.tsx']?.content || '';
-    
     const previewHtml = `
       <!DOCTYPE html>
       <html>
@@ -533,17 +532,36 @@ function EditorPage() {
           <div id="root">Loading...</div>
           <script type="text/babel">
             try {
-              // Add React import if not present
               let code = \`${jsContent.replace(/`/g, '\\`')}\`;
+              
+              // Ensure React is available in the script scope
               if (!code.includes('import React') && !code.includes('const React')) {
                 code = 'const React = window.React;\\n' + code;
               }
               
-              // Execute the code
-              eval(Babel.transform(code, { presets: ['react'] }).code);
+              // Transform code using Babel
+              const transformedCode = Babel.transform(code, { presets: ['react'] }).code;
+              
+              // Use a function wrapper to capture the App component
+              let App = undefined;
+              const exports = {}; // Mock exports object
+              const module = { exports }; // Mock module object
+              
+              // Execute the transformed code
+              eval(transformedCode);
+              
+              // Check if App component is available, prioritizing default export or a variable named App
+              if (typeof exports.default === 'function' || (typeof exports.default === 'object' && exports.default !== null)) {
+                App = exports.default;
+              } else if (typeof window.App === 'function' || (typeof window.App === 'object' && window.App !== null)) {
+                 App = window.App; // Check if the component was attached to window
+              } else if (typeof window.exports !== 'undefined' && (typeof window.exports.default === 'function' || (typeof window.exports.default === 'object' && window.exports.default !== null))) {
+                 App = window.exports.default; // Check if exports were attached to window
+              }
               
               // Render the App component
               const container = document.getElementById('root');
+              container.innerHTML = ''; // Clear loading message
               if (typeof App !== 'undefined') {
                 const root = ReactDOM.createRoot(container);
                 root.render(React.createElement(App));

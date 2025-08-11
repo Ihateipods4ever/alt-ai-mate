@@ -15,6 +15,9 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
+    "types": [
+      "monaco-editor-react", "lucide-react"
+    ],
     "paths": {
       "@/*": [
         "./src/*"

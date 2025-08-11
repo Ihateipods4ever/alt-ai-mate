@@ -160,6 +160,7 @@ function SettingsPage() {
                             id={`${provider.id}-key`}
                             type={showKeys[provider.id as keyof typeof showKeys] ? "text" : "password"}
                             placeholder={`Enter your ${provider.name} API key`}
+                            name={`${provider.id}-key`}
                             value={apiKeys[provider.id as keyof typeof apiKeys]}
                             onChange={(e) => handleApiKeyChange(provider.id, e.target.value)}
                           />
@@ -225,12 +226,12 @@ function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" defaultValue="developer@alt-ai-mate.com" />
+                <Label htmlFor="profile-email">Email</Label>
+                <Input id="profile-email" name="email" type="email" defaultValue="developer@alt-ai-mate.com" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input id="name" defaultValue="Developer" />
+                <Label htmlFor="profile-name">Full Name</Label>
+                <Input id="profile-name" name="name" defaultValue="Developer" />
               </div>
               <Button>Save Changes</Button>
             </CardContent>
