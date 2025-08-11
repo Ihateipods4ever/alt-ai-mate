@@ -15,9 +15,9 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "types": [
-      "monaco-editor-react", "lucide-react"
-    ],
+    "types": [],
+    "typeRoots": ["./node_modules/@types"],
+    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./src/*"

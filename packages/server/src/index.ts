@@ -2,7 +2,7 @@ import cors from 'cors'; // Import the cors package
 import { Pool } from 'pg';
 import express from 'express';
 import dotenv from 'dotenv';
-import aiService from './services/aiService.js'; // Assuming this file exists and exports an object
+import aiService from './services/aiService'; // Assuming this file exists and exports an object
 
 // Load environment variables
 dotenv.config(); // Assuming dotenv.config() is still needed and works with import
@@ -59,8 +59,7 @@ app.get('/api/health', async (req, res) => {
 
 /**
  * @route   POST /api/projects
- * @desc    Create a new project in the database.
- * @access  Public
+ * @desc    Create a new project in the database.\n * @access  Public
  */
 app.post('/api/projects', async (req, res) => {
     const { name, projectType, userId } = req.body;
@@ -110,7 +109,7 @@ app.get('/api/projects', async (req, res) => {
  * @desc    Generate code using AI
  * @access  Public
  */
-app.post('/api/generate-code', async (req, res) => {
+app.post('/api/generate-code', cors(), async (req, res) => {
     const { prompt, language, framework, projectType } = req.body;
 
     if (!prompt) {
@@ -177,7 +176,7 @@ app.post('/api/ai-chat', async (req, res) => {
     try {
       // For now, provide helpful responses about code
       let response = '';
-      
+
       if (message.toLowerCase().includes('error') || message.toLowerCase().includes('bug')) {
         response = `I can help you debug that! Looking at your code context, here are some common solutions:
 
@@ -202,7 +201,7 @@ What specific aspect would you like to optimize?`;
 
 I can help you with:
 - Code generation and debugging
-- React/TypeScript best practices  
+- React/TypeScript best practices
 - Performance optimization
 - Architecture suggestions
 
