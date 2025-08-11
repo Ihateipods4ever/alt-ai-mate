@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const dotenv = require('dotenv');
-const aiService = require('./services/aiService');
+const aiService = require('./services/aiService.ts');
 
 // Load environment variables
 dotenv.config();
