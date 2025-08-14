@@ -83,17 +83,18 @@ export { YouTubeDownloader };`;
  * @returns {string} The generated code.
  */
 export function generateGenericFunction({ prompt, language = 'javascript', framework = 'none' }: GenerationParams): string {
-    const functionName = prompt.toLowerCase().replace(/[^a-z0-9_]/g, '').substring(0, 25) || 'generatedFunction';
-  return "// Generated " + language + " code for: " + prompt + "\n" +
-  "// Framework: " + framework + "\n" +
-  "\n" +
-  "function " + functionName + "() {\n" +
-  "    // Implementation for: " + prompt + "\n" +
-  "    console.log('Executing: " + prompt + "');\n" +
-  "    return { status: 'success', message: 'Function executed successfully' };\n" +
-  " }\n" +
-  "\n" +
-  "export default " + functionName + ";";
+  // The prompt is used to guide the code generation, but not directly inserted.
+  // A more sophisticated AI model would interpret the prompt to generate relevant code.
+  // For this generic function, we'll create a simple placeholder based on language/framework.
+  const functionName = 'handleUserRequest'; // Generic name
+  const comment = `// This function is a placeholder based on the prompt: "${prompt}"`;
+
+  if (language === 'javascript') {
+    return `${comment}\n\nfunction ${functionName}() {\n  console.log('Processing request...');\n  // Add code based on prompt intent here\n  return { success: true, message: 'Request processed' };\n}\n\nexport default ${functionName};`;
+  } else {
+    // Add more language/framework specific placeholders as needed
+    return `${comment}\n\n// Generic code placeholder for language: ${language}, framework: ${framework}\n// Implement logic based on the user's prompt`;
+  }
 }
 
  export function generateCodeFromPrompt(params: GenerationParams): string {
@@ -102,5 +103,5 @@ export function generateGenericFunction({ prompt, language = 'javascript', frame
         return generateYouTubeDownloader();
     } else {
         return generateGenericFunction(params);
-    }
+ }
 }

@@ -1,3 +1,4 @@
+import * as Babel from '@babel/core';
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -135,6 +136,39 @@ app.get('/api/projects', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
+/**
+ * @route   POST /api/transform-code
+ * @desc    Transform code using Babel on the backend.
+ * @access  Public
+ */
+app.post('/api/transform-code', async (req: Request, res: Response) => {
+  const { code, css } = req.body;
+
+  if (!code) {
+    return res.status(400).json({ error: 'Missing code in request body.' });
+  }
+
+  try {
+    // Transform code using Babel
+    const result = Babel.transformSync(code, {
+      presets: ['react'],
+      plugins: ['@babel/plugin-transform-modules-commonjs'],
+    });
+
+    if (result && result.code !== undefined && result.code !== null) {
+      // Send transformed code and original css back to the frontend
+      res.status(200).json({ code: result.code, css });
+    } else {
+      console.error('Babel transformation returned unexpected result:', result);
+      res.status(500).json({ error: 'Code transformation failed: Invalid Babel result' });
+    }
+  } catch (error: any) {
+    console.error('Backend Babel transformation error:', error);
+    res.status(500).json({ error: 'Code transformation failed', details: error.message || error });
+  }
+});
+
 
 /**
  * @route   POST /api/generate-code

@@ -6,7 +6,6 @@
   <title>Live Preview</title>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
     body {
       position: relative; /* Needed for absolute positioning of the button */
@@ -60,20 +59,8 @@
           document.head.appendChild(style);
         }
 
-        // Prepare and transpile JSX
-        let fullCode = code;
-        if (!code.includes('import React')) {
- fullCode = 'const React = window.React;\\n' + code;
-        }
-        // Note: import statements are not fully supported in this preview environment
-        // Please provide code compatible with a non-module environment, or rely on the
-        // pre-loaded React and ReactDOM globals.
-        const transformedCode = Babel.transform(fullCode, {
- presets: ['react'],
-        }).code;
-
         // Create a function from the code and execute it
-        const App = new Function('React', 'ReactDOM', transformedCode)(React, ReactDOM);
+        const App = new Function('React', 'ReactDOM', code)(React, ReactDOM);
         
         // Render the main component
         if (typeof App !== 'undefined') {
@@ -120,9 +107,6 @@
       // Store the last received code and css
       lastCode = code;
       lastCss = css;
-
-      // Check if Babel is available before attempting transformation
-      console.log('Checking if Babel is defined:', typeof Babel !== 'undefined' ? 'Defined' : 'Undefined');
 
       // Render the preview with the received data
       renderPreview(lastCode, lastCss);
