@@ -9,30 +9,46 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
     body {
+      position: relative; /* Needed for absolute positioning of the button */
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
       margin: 0;
       padding: 0;
       background: white;
     }
+    #refreshButton {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 5px 10px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
     #root {
       min-height: 100vh;
       padding: 1rem;
     }
+    #error-display {
+      color: red;
+      padding: 20px;
+      font-family: monospace;
+    }
   </style>
 </head>
 <body>
+  <button id="refreshButton">Refresh</button>
   <div id="root"></div>
-  <script type="text/javascript">
+  <script type="module">
     const root = ReactDOM.createRoot(document.getElementById('root'));
+    const errorDisplay = document.createElement('div');
+    errorDisplay.id = 'error-display';
+    document.body.appendChild(errorDisplay);
 
-    window.addEventListener('message', (event) => {
-      // IMPORTANT: Add a security check for the origin of the message
-      // if (event.origin !== 'http://localhost:5173') return;
-
-      const { code, css } = event.data;
-
+    const renderPreview = (code, css) => {
       // Clear previous content and errors
       root.render(null);
+      errorDisplay.innerHTML = ''; // Clear previous errors
       document.querySelectorAll('style[data-dynamic-style]').forEach(el => el.remove());
 
       try {
@@ -47,9 +63,14 @@
         // Prepare and transpile JSX
         let fullCode = code;
         if (!code.includes('import React')) {
-          fullCode = 'const React = window.React;\\n' + code;
+ fullCode = 'const React = window.React;\\n' + code;
         }
-        const transformedCode = Babel.transform(fullCode, { presets: ['react'] }).code;
+        // Note: import statements are not fully supported in this preview environment
+        // Please provide code compatible with a non-module environment, or rely on the
+        // pre-loaded React and ReactDOM globals.
+        const transformedCode = Babel.transform(fullCode, {
+ presets: ['react'],
+        }).code;
 
         // Create a function from the code and execute it
         const App = new Function('React', 'ReactDOM', transformedCode)(React, ReactDOM);
@@ -69,19 +90,54 @@
 
       } catch (err) {
         console.error('Preview Error:', err);
-        // Display error in the preview window
-        root.render(
-          React.createElement('div', { style: { color: 'red', padding: '20px', fontFamily: 'monospace' } },
-            React.createElement('h3', null, 'Preview Error'),
-            React.createElement('pre', { style: { background: '#f5f5f5', padding: '10px', borderRadius: '4px', overflow: 'auto' } }, err.message),
-            React.createElement('details', { style: { marginTop: '10px' } },
-              React.createElement('summary', null, 'Stack Trace'),
-              React.createElement('pre', { style: { background: '#f5f5f5', padding: '10px', borderRadius: '4px', overflow: 'auto', fontSize: '12px' } }, err.stack || 'No stack trace available')
-            )
-          )
-        );
+        displayError('Preview Error', err);
       }
+    };
+
+    const displayError = (title, error) => {
+        errorDisplay.innerHTML = `
+            <h3>${title}</h3>
+            <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow: auto;">${error.message || error}</pre>
+            <details style="margin-top: 10px;">
+              <summary>Stack Trace</summary>
+              <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow: auto; font-size: 12px;">${error.stack || 'No stack trace available'}</pre>
+            </details>`;
+    };
+
+    // Log to confirm script starts
+    console.log('Preview iframe script running.');
+
+    // Store the last received code and css globally or in a way accessible to the click handler
+    let lastCode = '';
+    let lastCss = '';
+
+    window.addEventListener('message', (event) => {
+      // IMPORTANT: Add a security check for the origin of the message
+      // if (event.origin !== 'http://localhost:5173') return;
+
+      const { code, css } = event.data;
+
+      // Store the last received code and css
+      lastCode = code;
+      lastCss = css;
+
+      // Check if Babel is available before attempting transformation
+      console.log('Checking if Babel is defined:', typeof Babel !== 'undefined' ? 'Defined' : 'Undefined');
+
+      // Render the preview with the received data
+      renderPreview(lastCode, lastCss);
     }, false);
+
+    // Add event listener for the refresh button
+    document.getElementById('refreshButton').addEventListener('click', () => {
+      renderPreview(lastCode, lastCss); // Use the stored values
+    });
+
+    // Global error handler for any uncaught errors
+    window.onerror = (message, source, lineno, colno, error) => {
+        displayError('Uncaught Error', error || { message: message, stack: `${source}:${lineno}:${colno}` });
+        return true; // Prevent default browser error handling
+    };
   </script>
 </body>
 </html>

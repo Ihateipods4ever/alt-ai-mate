@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from 'react';
+import * as Babel from '@babel/core';
 
 interface LivePreviewProps {
   code: string;
@@ -12,23 +13,27 @@ const LivePreview: React.FC<LivePreviewProps> = ({ code, css }) => {
     const iframe = iframeRef.current;
     if (!iframe) return;
 
-    const postMessage = () => {
-      iframe.contentWindow?.postMessage({ code, css }, '*');
-    };
+    try {
+      const result = Babel.transformSync(code, {
+        presets: ['react'],
+        plugins: ['@babel/plugin-transform-modules-commonjs'],
+      });
 
-    // Post message when the iframe has loaded
-    iframe.onload = postMessage;
-
-    // Or if it's already loaded, post immediately
-    if (iframe.contentWindow) {
-      postMessage();
+      if (result && result.code !== undefined && result.code !== null) {
+        iframe.contentWindow?.postMessage({ type: 'CODE', code: result.code, css }, '*');
+      } else {
+        console.error('Babel transformation returned unexpected result:', result);
+        iframe.contentWindow?.postMessage({ type: 'ERROR', message: 'Code transformation failed: Invalid Babel result' }, '*');
+      }
+    } catch (error: any) {
+      console.error('Babel transformation error:', error);
+      iframe.contentWindow?.postMessage({ type: 'ERROR', message: `Code transformation failed: ${error.message || error}` }, '*');
     }
   }, [code, css]);
 
   return (
     <iframe
       ref={iframeRef}
-      src="/src/components/preview/preview.html"
       title="Live Preview"
       className="w-full h-full bg-white border rounded-md shadow-inner"
         sandbox="allow-scripts allow-same-origin"

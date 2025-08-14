@@ -41,6 +41,9 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
+    "@babel/core": "^7.28.0",
+    "@babel/plugin-transform-modules-commonjs": "^7.27.1",
+    "@babel/preset-react": "^7.27.1",
     "@types/file-saver": "^2.0.7",
     "@types/node": "^18.17.0",
     "@types/react": "^18.2.66",
