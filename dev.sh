@@ -59,7 +59,6 @@ if [ ! -d "$CLIENT_DIR/node_modules" ]; then
     echo "Frontend dependencies not found. Running npm install in $CLIENT_DIR..."
     (cd "$CLIENT_DIR" && npm install)
 (cd "$CLIENT_DIR" && export VITE_API_URL=http://localhost:3001 && npm run dev > ../client-output.log 2>&1 &)
-(cd "$CLIENT_DIR" && npm run dev > ../client-output.log 2>&1 &)
 VITE_PID=$!
 
 # A more robust function to wait for a server to be available
@@ -104,8 +103,15 @@ echo "  GET  /api/servers - List servers"
 echo ""
 echo "Press Ctrl+C to stop the server"
 
+# Function to clean up background processes
+cleanup() {
+  echo ""
+  echo "Shutting down..."
+  kill $BACKEND_PID $VITE_PID 2>/dev/null || true
+  exit 0
+}
 # Keep the script running and handle Ctrl+C
-trap 'echo ""; echo "Shutting down..."; kill $BACKEND_PID $VITE_PID 2>/dev/null || true; exit 0' INT
+trap cleanup INT
 
 # Wait for the server process
 wait $BACKEND_PID $VITE_PID
