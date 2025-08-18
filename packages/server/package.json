@@ -35,7 +35,7 @@
   "license": "ISC",
   "description": "ALT-AI-MATE backend server",
   "devDependencies": {
-    "ts-node-dev": "^2.0.0",
-    "@types/babel__core": "^7.20.5"
+    "@types/babel__core": "^7.20.5",
+    "ts-node-dev": "^2.0.0"
   }
 }
