@@ -18,7 +18,8 @@ npm install
 
 # Build server
 echo "🔧 Building server..."
-cd packages/server
+cd ./packages/server
+npm install
 npm run build
 echo "✅ Server build completed successfully!"
 
